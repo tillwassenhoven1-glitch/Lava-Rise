@@ -84,46 +84,30 @@
   .rank .pos{width:28px;font-family:'Lilita One';font-size:18px;color:var(--lava3)}
   .rank .h{margin-left:auto;color:var(--muted);font-size:13px}
   .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  #version{position:fixed;left:12px;bottom:10px;font:800 12px 'Nunito',sans-serif;color:#c9a9a0;background:#0008;padding:4px 10px;border-radius:99px;z-index:60}
   .hidden{display:none!important}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
   .chip{font:800 13px 'Nunito';padding:6px 10px;border-radius:99px;background:var(--bg);color:var(--muted);box-shadow:none;border:2px solid var(--rock2)}
   .chip.on{background:var(--lava2);color:#2a0d00;border-color:var(--lava2)}
   .lbl{font-weight:800;text-align:left;margin-top:12px}
   textarea,.full{width:100%;font:700 14px 'Nunito';padding:8px 10px;border-radius:10px;border:2px solid var(--rock2);background:var(--bg);color:var(--txt);margin-top:6px;resize:vertical}
-  #hintBtn{font-size:16px;padding:12px 12px;background:linear-gradient(#fff59d,var(--lava3));color:#2a0d00;box-shadow:0 4px 0 #b38f00}
-  #hintBtn:disabled{opacity:.35;background:var(--rock2);color:var(--muted);box-shadow:0 4px 0 #1c0f15;cursor:default}
+  #hintBtn{font-size:16px;padding:12px 12px}
+  #hintBtn:disabled{opacity:.4}
   .bubble.wait{background:#3a2530;color:#fff}
   .bubble i{font-style:normal;font-size:11px}
-  #need{font-weight:800;font-size:13px;color:var(--muted);margin:-2px 0 6px;min-height:18px}
-  #need b{color:var(--lava3)}
-  #need.warn b{color:#ff8a80}
-  #arena.danger{box-shadow:inset 0 0 40px #000c,inset 0 0 70px #ff3d0088;animation:pulse 1s ease-in-out infinite alternate}
-  @keyframes pulse{to{box-shadow:inset 0 0 40px #000c,inset 0 0 110px #ff3d00bb}}
-  #recLine{position:absolute;left:0;right:0;border-top:2px dashed #ffd54f99;z-index:3;pointer-events:none}
-  #recLine span{position:absolute;left:6px;top:-18px;font-size:11px;font-weight:800;color:#ffd54f}
-  .mini{font-size:14px;padding:3px 9px;border-radius:99px;box-shadow:none;background:var(--rock);color:var(--txt);font-family:'Nunito';font-weight:800}
-  #customInfo{font-size:12px;font-weight:800;text-align:left;margin-top:4px;min-height:16px}
-  details{text-align:left;margin-top:14px;background:#0004;border-radius:14px;padding:8px 12px}
-  summary{cursor:pointer;font-weight:800}
-  .rank div.new{outline:2px solid var(--lava3);background:#ff910033}
-  .rank .sub{font-size:11px;color:var(--muted);font-weight:600}
-  #newRec{font-family:'Lilita One';font-size:22px;color:var(--lava3);min-height:0;animation:pop .5s}
-  #countdown{font-size:clamp(60px,18vw,120px)!important}
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <div class="topline"><span class="pill" id="roundLbl">Runde 1</span><span class="pill" id="bestLbl">🏆 –</span><span class="pill" id="aliveLbl">🧍 4 übrig</span><button type="button" class="mini" id="sndBtn" title="Sound an/aus">🔊</button></div>
+    <div class="topline"><span class="pill" id="roundLbl">Runde 1</span><span class="pill" id="aliveLbl">🧍 4 übrig</span></div>
     <div id="question">Lava-Wort</div>
-    <div id="need"></div>
     <div id="timerWrap"><div id="timer"></div></div>
   </header>
   <div id="arena">
     <div id="world">
       <div id="markers"></div>
       <div id="ground"></div>
-      <div id="recLine" class="hidden"><span>🏆 Dein Rekord</span></div>
       <div id="lanes"></div>
       <div id="lava"><div id="lavaLabel"></div></div>
     </div>
@@ -141,6 +125,7 @@
 
 <!-- Start -->
 <div class="overlay" id="startScreen">
+  <div id="version">Version 0.1 · Open Beta 🧪</div>
   <div class="card">
     <h1>LAVA-WORT</h1>
     <p>Lange Wörter = hoch klettern. Die Lava kommt! 🌋</p>
@@ -148,7 +133,7 @@
       ❓ Eine Frage erscheint, z.&nbsp;B. <b>„Nenne ein Tier!“</b><br>
       ⌨️ Tipp schnell eine passende Antwort<br>
       🧗 Jeder Buchstabe = 1 Meter nach oben<br>
-      🔥 Nach jeder Runde steigt die Lava – oben steht, wie viele Buchstaben du brauchst<br>
+      🔥 Nach jeder Runde steigt die Lava – immer schneller<br>
       🏆 Wer als Letztes übrig bleibt, gewinnt!<br>
       🚫 Jedes Wort darf nur einmal pro Spiel benutzt werden<br>💡 Max. 3 Tipps – dann zählt die Antwort nur halb<br>👀 Alle Antworten werden erst gezeigt, wenn alle fertig sind
     </div>
@@ -157,17 +142,13 @@
     <div class="row">Stärke <div class="seg" id="diffSeg"></div></div>
     <div class="row">Sprache <div class="seg" id="langSeg"></div></div>
     <div class="row">Zeit pro Antwort <div class="seg" id="timeSeg"></div></div>
-    <div class="row">Lava-Tempo <div class="seg" id="speedSeg"></div></div>
     <div class="lbl">Kategorien</div>
     <div class="chips" id="catChips"></div>
     <div class="lbl">✨ Eigene Kategorie <span class="small">(optional)</span></div>
     <input class="full" id="customName" placeholder="z. B. Automarken, Pokémon, Youtuber…" maxlength="30">
-    <textarea id="customWords" rows="2" placeholder="Eigene Wörter mit Komma, z. B. Audi, BMW, Mercedes…"></textarea>
-    <div id="customInfo"></div>
-    <div class="row"><span>Party-Modus<br><span class="small">Jedes Wort zählt – ohne Prüfung (min. 3 Buchstaben)</span></span><input type="checkbox" id="partyIn"></div>
+    <textarea id="customWords" rows="2" placeholder="Beispielwörter mit Komma (für Bots & Tipps), z. B. Audi, BMW, Mercedes…"></textarea>
+    <div class="row"><span>Party-Modus<br><span class="small">Jedes Wort zählt – ohne Wortliste prüfen</span></span><input type="checkbox" id="partyIn"></div>
     <div style="margin-top:16px"><button id="startBtn">🔥 Los geht's!</button></div>
-    <div id="startErr" class="small" style="color:var(--bad);margin-top:8px;font-weight:800"></div>
-    <details><summary>🏆 Highscores</summary><div class="rank" id="hsList"></div><button type="button" class="mini" id="hsReset" style="margin-top:4px">🗑️ Zurücksetzen</button></details>
   </div>
 </div>
 
@@ -175,11 +156,8 @@
 <div class="overlay hidden" id="endScreen">
   <div class="card">
     <h2 id="endTitle"></h2>
-    <div id="newRec"></div>
     <p id="endText"></p>
     <div class="rank" id="rankList"></div>
-    <div class="lbl">🏆 Deine Bestenliste</div>
-    <div class="rank" id="endHs"></div>
     <div class="btns">
       <button id="watchBtn" class="sec">👀 Zuschauen</button>
       <button id="againBtn">🔁 Nochmal</button>
@@ -223,9 +201,9 @@ const CATS = [
 ];
 const T={
  de:{unknown:'❌ Kenne ich nicht – nochmal!',used:'🚫 Schon benutzt!',letters:'❌ Nur Buchstaben bitte',sent:n=>`✅ Abgegeben (+${n}) – warte auf die anderen…`,
-   hint:w=>`💡 Tipp: ${w} – zählt nur halb`,nohint:'💡 Keine Tipps mehr',slow:'⏰ Zu langsam!',reveal:'👀 Auflösung!',lava:r=>`🌋 Lava +${r} m`,gone:n=>`💀 ${n} – weg!`,custom:n=>`Nenne: ${n}!`,ph:'Antwort tippen…',end:'🏁 Ende!',short:'❌ Mind. 3 Buchstaben',unknownC:'❌ Kenn ich nicht – trag es bei deinen Wörtern ein oder nimm Party-Modus',rec:'🎉 NEUER REKORD!'},
+   hint:w=>`💡 Tipp: ${w} – zählt nur halb`,nohint:'💡 Keine Tipps mehr',slow:'⏰ Zu langsam!',reveal:'👀 Auflösung!',lava:r=>`🌋 Lava +${r} m`,gone:n=>`💀 ${n} – weg!`,custom:n=>`Nenne: ${n}!`,ph:'Antwort tippen…',end:'🏁 Ende!'},
  en:{unknown:"❌ Don't know that – try again!",used:'🚫 Already used!',letters:'❌ Letters only',sent:n=>`✅ Locked in (+${n}) – waiting for the others…`,
-   hint:w=>`💡 Hint: ${w} – counts half`,nohint:'💡 No hints left',slow:'⏰ Too slow!',reveal:'👀 Reveal!',lava:r=>`🌋 Lava +${r} m`,gone:n=>`💀 ${n} – out!`,custom:n=>`Name: ${n}!`,ph:'Type your answer…',end:'🏁 The end!',short:'❌ At least 3 letters',unknownC:"❌ Don't know that – add it to your words or use party mode",rec:'🎉 NEW RECORD!'}
+   hint:w=>`💡 Hint: ${w} – counts half`,nohint:'💡 No hints left',slow:'⏰ Too slow!',reveal:'👀 Reveal!',lava:r=>`🌋 Lava +${r} m`,gone:n=>`💀 ${n} – out!`,custom:n=>`Name: ${n}!`,ph:'Type your answer…',end:'🏁 The end!'}
 };
 const fold = s => s.toLowerCase().replace(/ß/g,'ss').normalize('NFD').replace(/[̀-ͯ]/g,'')
   .replace(/ae/g,'a').replace(/oe/g,'o').replace(/ue/g,'u').replace(/[^a-z]/g,'');
@@ -242,34 +220,7 @@ function matchWord(cat,input,lang){
 
 // ---------- Setup UI ----------
 const $=id=>document.getElementById(id);
-
-// ---------- Bekannte eigene Kategorien (damit Bots mitspielen & Wörter geprüft werden) ----------
-const EXTRA=[
- {n:'Youtuber & Streamer',k:['youtube','streamer','influencer','twitch','tiktoker'],w:'Gronkh,Paluten,Zombey,Maudado,GermanLetsPlay,Rewinside,Unge,Julien Bam,LeFloid,Rezo,Dner,Montanablack,Knossi,Trymacs,Papaplatte,BastiGHG,HandOfBlood,Inscope,Apored,Simon Desue,Dagi Bee,Bibi,Kelly MissesVlog,Freshtorge,Sascha Huber,Tanzverbot,Rumathra,Gnu,Reved,Elotrix,Stegi,Taddl,Ardy,ConCrafter,LetsHugo,Domtendo,Sturmwaffel,Joon Kim,Ksfreak,Standartskill,Mexify,Shurjoka,Sidemen,MrBeast,PewDiePie,Markiplier,Jacksepticeye,Dream,Technoblade,Ninja,Logan Paul,Jake Paul,KSI,Dude Perfect,Mark Rober,Veritasium,Kurzgesagt,iShowSpeed,Kai Cenat,Unsympathisch TV,Ungespielt,Pietsmiet,Mois,Noway,Eligella'},
- {n:'Automarken',k:['auto','marke des autos','car'],w:'Audi,BMW,Mercedes,Volkswagen,VW,Porsche,Opel,Ford,Toyota,Honda,Nissan,Mazda,Suzuki,Subaru,Mitsubishi,Hyundai,Kia,Skoda,Seat,Cupra,Renault,Peugeot,Citroen,Fiat,Alfa Romeo,Ferrari,Lamborghini,Maserati,Bugatti,Bentley,Rolls-Royce,Aston Martin,Jaguar,Land Rover,Range Rover,Mini,Smart,Tesla,Volvo,Dacia,Lexus,Chevrolet,Dodge,Jeep,Cadillac,McLaren,Koenigsegg,Pagani,Lotus,Lancia,Saab,BYD,Polestar,Genesis,Infiniti,Chrysler,Rimac,Alpine,Trabant'},
- {n:'Pokémon',k:['pokemon','pokémon'],w:'Pikachu,Raichu,Pichu,Glumanda,Glutexo,Glurak,Schiggy,Schillok,Turtok,Bisasam,Bisaknosp,Bisaflor,Raupy,Hornliu,Taubsi,Rattfratz,Pummeluff,Knuddeluff,Mauzi,Enton,Machollo,Kleinstein,Ponita,Flegmon,Magnetilo,Nebulak,Alpollo,Gengar,Onix,Traumato,Krabby,Voltobal,Kokowei,Tragosso,Kicklee,Nockchan,Schlurp,Smogon,Rihorn,Chaneira,Tangela,Kangama,Seeper,Goldini,Sterndu,Pantimos,Sichlor,Rossana,Elektek,Magmar,Pinsir,Tauros,Karpador,Garados,Lapras,Ditto,Evoli,Aquana,Blitza,Flamara,Porygon,Relaxo,Arktos,Zapdos,Lavados,Dratini,Dragonir,Dragoran,Mewtu,Mew,Endivie,Feurigel,Karnimani,Togepi,Ampharos,Psiana,Nachtara,Lugia,Celebi,Lucario,Riolu,Knakrack,Quajutsu,Sandan,Vulpix,Vulnona,Abra,Kadabra,Simsala,Rayquaza,Groudon,Kyogre,Arceus,Darkrai,Zekrom,Reshiram,Charizard,Bulbasaur,Squirtle,Charmander,Jigglypuff,Snorlax,Eevee,Gyarados,Magikarp,Psyduck,Meowth,Mewtwo,Greninja,Garchomp,Sylveon,Feelinara'},
- {n:'Fußballvereine',k:['verein','club','klub','mannschaft','fussballteam','fussball','bundesliga'],w:'Bayern München,FC Bayern,Bayern,Borussia Dortmund,Dortmund,BVB,Schalke,Borussia Mönchengladbach,Gladbach,Bayer Leverkusen,Leverkusen,RB Leipzig,Leipzig,Eintracht Frankfurt,Frankfurt,VfB Stuttgart,Stuttgart,Werder Bremen,Bremen,Hamburger SV,HSV,St Pauli,Union Berlin,Hertha BSC,Hertha,FC Köln,Köln,VfL Wolfsburg,Wolfsburg,SC Freiburg,Freiburg,Mainz,Hoffenheim,FC Augsburg,Augsburg,Heidenheim,VfL Bochum,Bochum,Fortuna Düsseldorf,Fortuna,Hannover,Nürnberg,Kaiserslautern,Darmstadt,Real Madrid,FC Barcelona,Barcelona,Barca,Atletico Madrid,Manchester United,Manchester City,Liverpool,Chelsea,Arsenal,Tottenham,Juventus,AC Mailand,Inter Mailand,AC Milan,Napoli,AS Rom,Paris Saint-Germain,PSG,Ajax Amsterdam,Ajax,Benfica,FC Porto,Celtic,Galatasaray,Fenerbahce,Besiktas,Olympique Marseille,Sevilla,Valencia,Aston Villa,Newcastle'},
- {n:'Fußballspieler',k:['fussballer','spieler','kicker','footballer'],w:'Messi,Lionel Messi,Ronaldo,Cristiano Ronaldo,Neymar,Mbappe,Haaland,Kane,Harry Kane,Musiala,Wirtz,Florian Wirtz,Thomas Müller,Müller,Neuer,Manuel Neuer,Kimmich,Sane,Gnabry,Havertz,Rüdiger,Ter Stegen,Kroos,Toni Kroos,Götze,Reus,Lewandowski,Benzema,Modric,Salah,De Bruyne,Bellingham,Vinicius,Lamine Yamal,Yamal,Pedri,Gavi,Griezmann,Lukaku,Zidane,Pele,Maradona,Beckenbauer,Ballack,Klose,Schweinsteiger,Lahm,Podolski,Ronaldinho,Kaka,Beckham,Rooney,Ibrahimovic,Hummels,Füllkrug,Saka,Foden,Rashford,Courtois,Van Dijk,Odegaard,Palmer,Osimhen,Leao,Xhaka,Guirassy,Olise,Kolo Muani,Szoboszlai,Valverde,Rodri,Lautaro'},
- {n:'Superhelden & Schurken',k:['held','superheld','marvel','dc','schurke','hero','villain'],w:'Superman,Batman,Spider-Man,Spiderman,Iron Man,Ironman,Hulk,Thor,Captain America,Black Widow,Hawkeye,Wonder Woman,Flash,Aquaman,Green Lantern,Cyborg,Wolverine,Deadpool,Black Panther,Doctor Strange,Ant-Man,Wasp,Vision,Scarlet Witch,Falcon,Captain Marvel,Groot,Rocket,Star-Lord,Gamora,Drax,Thanos,Loki,Joker,Catwoman,Robin,Batgirl,Supergirl,Shazam,Daredevil,Venom,Storm,Cyclops,Magneto,Silver Surfer,Ghost Rider,Hellboy,Invincible,Nightwing,Raven,Starfire,Beast Boy,Harley Quinn,Mystique,Gambit,Rogue,Moon Knight,She-Hulk,Ultron,Green Goblin,Bane,Riddler,Pinguin,Lex Luthor,Darkseid'},
- {n:'Farben',k:['farbe','color','colour'],w:'Rot,Blau,Grün,Gelb,Orange,Lila,Violett,Rosa,Pink,Schwarz,Weiß,Grau,Braun,Türkis,Beige,Gold,Silber,Bronze,Magenta,Cyan,Oliv,Olivgrün,Dunkelblau,Hellblau,Dunkelgrün,Hellgrün,Dunkelrot,Bordeaux,Weinrot,Himmelblau,Marineblau,Königsblau,Mintgrün,Neongrün,Petrol,Ocker,Khaki,Creme,Elfenbein,Anthrazit,Lavendel,Flieder,Koralle,Lachs,Apricot,Senfgelb,Zitronengelb,Kupfer,Smaragdgrün,Rubinrot,Indigo,Purpur,Karmin,Zinnober,Sand,Taupe,Red,Blue,Green,Yellow,Purple,Black,White,Grey,Gray,Brown,Turquoise,Navy,Crimson,Maroon,Teal,Lime,Scarlet'},
- {n:'Videospiele',k:['spiel','game','zocken','videogame','konsolenspiel'],w:'Minecraft,Fortnite,Roblox,GTA,Grand Theft Auto,FIFA,EA FC,Call of Duty,Valorant,League of Legends,Counter-Strike,Overwatch,Apex Legends,Rocket League,Among Us,Mario Kart,Super Mario,Zelda,Pokemon,Animal Crossing,Splatoon,Smash Bros,Tetris,Pac-Man,Die Sims,Sims,Fall Guys,Brawl Stars,Clash Royale,Clash of Clans,Subway Surfers,Candy Crush,Terraria,Stardew Valley,Hollow Knight,Elden Ring,Dark Souls,Skyrim,Fallout,Cyberpunk,The Witcher,Witcher,Red Dead Redemption,Assassins Creed,Far Cry,Battlefield,Rainbow Six,PUBG,Destiny,Halo,Gears of War,Forza,Gran Turismo,Need for Speed,Hogwarts Legacy,God of War,The Last of Us,Uncharted,Portal,Half-Life,Geometry Dash,Rayman,Sonic,Crash Bandicoot,Spyro,Lethal Company,Palworld,Baldurs Gate,Helldivers,Rust,Ark,Valheim,Satisfactory,Factorio,Cities Skylines,Anno,Landwirtschafts-Simulator,Euro Truck Simulator,Wii Sports,Just Dance,Schedule One,Repo,Peak'},
- {n:'Marken',k:['marke','brand','firma','unternehmen','logo'],w:'Nike,Adidas,Puma,Apple,Samsung,Google,Microsoft,Amazon,Coca-Cola,Pepsi,McDonalds,Burger King,KFC,Subway,Starbucks,Haribo,Milka,Nutella,Ferrero,Lego,Playmobil,Sony,Nintendo,Playstation,Xbox,Red Bull,Monster,IKEA,Zara,Gucci,Prada,Louis Vuitton,Chanel,Rolex,Lacoste,Tommy Hilfiger,Calvin Klein,Levis,Vans,Converse,New Balance,Reebok,Under Armour,The North Face,Jack Wolfskin,Netflix,Spotify,YouTube,TikTok,Instagram,Snapchat,WhatsApp,Facebook,Tesla,BMW,Mercedes,Audi,Porsche,Ferrari,Lidl,Aldi,Rewe,Edeka,Kaufland,Rossmann,DM,Media Markt,Saturn,Zalando,Ebay,Paypal,Visa,Dr Oetker,Maggi,Knorr,Kinder,Kitkat,Snickers,Twix,Oreo,Pringles,Doritos,Fanta,Sprite,Capri-Sun,Bosch,Siemens,Miele,Canon,Nikon,GoPro,JBL,Bose,Beats,Logitech,Razer,Asus,Lenovo,HP,Dell,Huawei,Xiaomi'},
- {n:'Süßigkeiten',k:['süßigkeit','suessigkeit','snack','schoko','candy','sweets','naschen'],w:'Schokolade,Gummibärchen,Lakritz,Lolli,Lutscher,Bonbon,Kaugummi,Marshmallow,Zuckerwatte,Praline,Keks,Cookie,Brownie,Muffin,Donut,Eis,Waffel,Popcorn,Chips,Karamell,Toffee,Nougat,Marzipan,Brause,Esspapier,Schokokuss,Weingummi,Fruchtgummi,Kaubonbon,Brausepulver,Zuckerstange,Lebkuchen,Spekulatius,Dominostein,Krokant,Pudding,Haribo,Maoam,Hubba Bubba,Mentos,Tic Tac,Smarties,Kinderschokolade,Kinder Bueno,Duplo,Hanuta,Milka,Ritter Sport,Toblerone,Snickers,Mars,Twix,Bounty,KitKat,Raffaello,Ferrero Rocher,Yogurette,Knoppers,Oreo,Leibniz,Prinzenrolle,Nimm2,Werthers,Center Shock,Skittles,Nerds,Trolli,Katjes,Salzstangen,Erdnussflips'},
- {n:'Getränke',k:['getrank','drink','trinken','getraenk'],w:'Wasser,Mineralwasser,Sprudel,Saft,Apfelsaft,Orangensaft,Traubensaft,Multivitaminsaft,Apfelschorle,Schorle,Limonade,Limo,Cola,Fanta,Sprite,Eistee,Tee,Kaffee,Kakao,Milch,Milchshake,Smoothie,Espresso,Cappuccino,Latte Macchiato,Energydrink,Red Bull,Spezi,Mezzo Mix,Bubble Tea,Matcha,Chai,Kräutertee,Pfefferminztee,Früchtetee,Grüner Tee,Heiße Schokolade,Buttermilch,Kefir,Ayran,Lassi,Sirup,Tonic Water,Ginger Ale,Club Mate,Malzbier,Fassbrause,Bier,Wein,Sekt,Water,Juice,Coffee,Tea,Milk,Lemonade'},
- {n:'Vornamen',k:['vorname','namen','name'],w:'Anna,Lena,Lea,Mia,Emma,Hannah,Sophie,Marie,Laura,Lisa,Julia,Sarah,Lara,Lina,Ella,Clara,Emily,Leonie,Amelie,Johanna,Nele,Paula,Greta,Ida,Frieda,Mila,Charlotte,Luisa,Elena,Nina,Jana,Katharina,Sabine,Petra,Claudia,Andrea,Susanne,Maria,Ben,Paul,Leon,Finn,Jonas,Noah,Elias,Luca,Lukas,Felix,Max,Maximilian,Moritz,Tim,Tom,Jan,Niklas,Julian,Till,Jakob,Emil,Anton,Theo,Henry,Oskar,Liam,Mats,Ole,Jannik,David,Daniel,Tobias,Florian,Alexander,Sebastian,Michael,Thomas,Stefan,Andreas,Markus,Peter,Klaus,Hans,Jürgen,Uwe,Frank,Christian,Martin,Simon,Fabian,Philipp,Kevin,Marcel,Dennis,Nico,Leo,Matteo,Mohammed,Ali,Emre,Can,Mehmet,Lars,Malte,Hendrik,Erik,Fynn,Lennard,Milan,Vincent,Valentin,Konstantin,Benedikt,Jonathan,Samuel,Aaron,Luis,Noel,Mira,Lia,Zoe,Marlene,Romy,Merle,Pia,Jule,Carla'},
- {n:'Schulfächer',k:['schulfach','fach','facher','faecher','unterricht','schule'],w:'Mathe,Mathematik,Deutsch,Englisch,Französisch,Spanisch,Latein,Italienisch,Russisch,Biologie,Bio,Chemie,Physik,Erdkunde,Geografie,Geographie,Geschichte,Politik,Sozialkunde,Gesellschaftslehre,Wirtschaft,Religion,Ethik,Philosophie,Praktische Philosophie,Kunst,Musik,Sport,Informatik,Technik,Hauswirtschaft,Textiles Gestalten,Werken,Literatur,Pädagogik,Psychologie,Darstellendes Spiel,Theater,Naturwissenschaften,Sachkunde,Sachunterricht,Erziehungswissenschaft,Wahlpflicht'},
- {n:'Minecraft',k:['minecraft','mc'],w:'Creeper,Zombie,Skelett,Skeleton,Spinne,Enderman,Enderdrache,Ender Drache,Wither,Blaze,Ghast,Slime,Schleim,Magmawürfel,Hexe,Witch,Dorfbewohner,Villager,Plünderer,Pillager,Eisengolem,Schneegolem,Shulker,Phantom,Warden,Piglin,Hoglin,Strider,Axolotl,Allay,Sniffer,Ertrunkener,Drowned,Wächter,Guardian,Evoker,Magier,Vex,Ravager,Verwüster,Endermite,Silberfischchen,Diamant,Diamond,Smaragd,Emerald,Netherit,Netherite,Eisen,Gold,Kohle,Redstone,Lapislazuli,Obsidian,Bruchstein,Cobblestone,Erde,Dirt,Sand,Kies,Holz,Bretter,Werkbank,Ofen,Truhe,Bett,Fackel,Spitzhacke,Pickaxe,Schwert,Axt,Schaufel,Hacke,Bogen,Armbrust,Dreizack,Schild,Elytra,Totem,Enderperle,Lohenrute,Trank,Zaubertisch,Amboss,Leuchtfeuer,Beacon,Netherportal,Endportal,Steve,Alex,Herobrine,Nether,Oberwelt,TNT,Kolben,Trichter,Lore,Schiene,Boot,Angel,Brot,Kuchen,Karotte,Kartoffel,Weizen,Zuckerrohr,Kürbis,Melone,Schaf,Kuh,Schwein,Huhn,Pferd,Wolf,Katze,Papagei,Biene,Panda,Fuchs,Ziege,Frosch,Kamel,Gürteltier,Breeze,Streitkolben,Shulkerkiste,Spawner,Bedrock'},
- {n:'Hunderassen',k:['hund','dog'],w:'Dackel,Pudel,Schäferhund,Deutscher Schäferhund,Labrador,Golden Retriever,Retriever,Chihuahua,Dalmatiner,Husky,Mops,Bernhardiner,Beagle,Boxer,Bulldogge,Französische Bulldogge,Rottweiler,Dobermann,Dogge,Deutsche Dogge,Collie,Border Collie,Australian Shepherd,Jack Russell,Terrier,Yorkshire Terrier,Malteser,Shih Tzu,Pekinese,Spitz,Zwergspitz,Pomeranian,Corgi,Cocker Spaniel,Spaniel,Windhund,Greyhound,Whippet,Akita,Shiba,Shiba Inu,Samojede,Malamute,Neufundländer,Berner Sennenhund,Sennenhund,Weimaraner,Rhodesian Ridgeback,Labradoodle,Pitbull,Bullterrier,Schnauzer,Havaneser,Basset,Bloodhound,Chow-Chow,Leonberger,Pinscher,Vizsla,Cavalier'},
- {n:'Musiker & Bands',k:['musik','rapper','sanger','band','kunstler','singer','popstar','interpret','star'],w:'Taylor Swift,Ed Sheeran,Billie Eilish,Drake,Eminem,Rihanna,Beyonce,Adele,Bruno Mars,The Weeknd,Dua Lipa,Harry Styles,Justin Bieber,Ariana Grande,Shakira,Lady Gaga,Michael Jackson,Madonna,Elvis,Queen,Beatles,ABBA,Coldplay,Imagine Dragons,Linkin Park,Rammstein,Die Ärzte,Die Toten Hosen,Helene Fischer,Mark Forster,Wincent Weiss,Cro,Sido,Bushido,Kollegah,Farid Bang,Capital Bra,Apache,Luciano,Shindy,RAF Camora,Bonez MC,Haftbefehl,Nina Chuba,Ski Aggu,Montez,Kontra K,Samra,Travis Scott,Kanye West,Snoop Dogg,Kendrick Lamar,Post Malone,Juice Wrld,Peter Fox,Seeed,Kraftklub,AnnenMayKantereit,Clueso,Tim Bendzko,Sarah Connor,Nena,Herbert Grönemeyer,Udo Lindenberg,Sabrina Carpenter,Olivia Rodrigo,Bad Bunny,Doja Cat,SZA,Miley Cyrus,Katy Perry,Pink,Sia,Avicii,David Guetta,Alan Walker,Marshmello,Felix Jaehn,Robin Schulz'},
- {n:'Essen & Gerichte',k:['essen','gericht','speise','food','mahlzeit','lieblingsessen'],w:'Pizza,Pasta,Spaghetti,Lasagne,Burger,Hamburger,Cheeseburger,Pommes,Döner,Dürüm,Lahmacun,Currywurst,Bratwurst,Schnitzel,Wiener Schnitzel,Gulasch,Rouladen,Sauerbraten,Kartoffelsalat,Nudelsalat,Bratkartoffeln,Kartoffelpüree,Pfannkuchen,Pancakes,Waffeln,Rührei,Spiegelei,Omelett,Sushi,Ramen,Curry,Chili con Carne,Tacos,Burrito,Nachos,Quesadilla,Paella,Risotto,Gnocchi,Ravioli,Tortellini,Maultaschen,Spätzle,Käsespätzle,Flammkuchen,Suppe,Tomatensuppe,Kürbissuppe,Eintopf,Linsensuppe,Hühnersuppe,Salat,Sandwich,Toast,Hot Dog,Wrap,Falafel,Hummus,Kebab,Frikadelle,Fischstäbchen,Chicken Nuggets,Nuggets,Grillhähnchen,Steak,Reis,Nudeln,Kaiserschmarrn,Apfelstrudel,Milchreis,Grießbrei,Brezel,Brötchen,Croissant,Bagel,Quiche,Moussaka,Gyros,Souvlaki,Pho,Dim Sum,Frühlingsrolle,Bibimbap,Kimchi,Fondue,Raclette,Leberkäse,Weißwurst,Sauerkraut,Knödel,Klöße,Couscous,Shakshuka,Poke Bowl,Kroketten'}
-];
-EXTRA.forEach(e=>{e.k=e.k.map(a=>fold(a)).filter(a=>a.length>=2); e.words=e.w.split(',');});
-function findExtra(name){
-  const k=fold(name||''); if(k.length<2) return null;
-  return EXTRA.find(e=>e.k.some(a=> k===a || (a.length>=3&&k.includes(a)) || (k.length>=4&&a.startsWith(k))))||null;
-}
-const userWords=()=>[...new Set($('customWords').value.split(/[,\n;]/).map(w=>w.trim()).filter(w=>fold(w).length>=2))];
-const S={bots:3,diff:1,lang:'de',time:10,speed:1,cats:new Set(CATS.map(c=>c.id))};
+const S={bots:3,diff:1,lang:'de',time:10,cats:new Set(CATS.map(c=>c.id))};
 try{ Object.assign(S,JSON.parse(localStorage.getItem('lavaSettings')||'{}')); S.cats=new Set(S.cats); }catch(e){ S.cats=new Set(CATS.map(c=>c.id)); }
 if(!S.cats.size) CATS.forEach(c=>S.cats.add(c.id));
 function seg(el,opts,key){ el.innerHTML=''; opts.forEach(([v,l])=>{const b=document.createElement('button');b.type='button';b.textContent=l;
@@ -278,7 +229,6 @@ seg($('botSeg'),[[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']],'bots');
 seg($('diffSeg'),[[0,'Leicht'],[1,'Mittel'],[2,'Schwer']],'diff');
 seg($('langSeg'),[['de','🇩🇪 Deutsch'],['en','🇬🇧 English']],'lang');
 seg($('timeSeg'),[[5,'5s'],[8,'8s'],[10,'10s'],[15,'15s'],[20,'20s']],'time');
-seg($('speedSeg'),[[0,'🐢 Langsam'],[1,'Normal'],[2,'🔥 Schnell']],'speed');
 function chips(){ const box=$('catChips'); box.innerHTML='';
   CATS.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='chip'+(S.cats.has(c.id)?' on':'');b.textContent=c.name;
     b.onclick=()=>{ if(S.cats.has(c.id)) S.cats.delete(c.id); else S.cats.add(c.id); chips(); }; box.appendChild(b);});
@@ -286,51 +236,10 @@ function chips(){ const box=$('catChips'); box.innerHTML='';
   all.onclick=()=>{ if(S.cats.size===CATS.length) S.cats.clear(); else CATS.forEach(c=>S.cats.add(c.id)); chips(); }; box.appendChild(all);
 }
 chips();
-try{ const n=localStorage.getItem('lavaName'); if(n) $('nameIn').value=n;
-  const c=JSON.parse(localStorage.getItem('lavaCustom')||'null'); if(c){ $('customName').value=c.n||''; $('customWords').value=c.w||''; $('partyIn').checked=!!c.p; } }catch(e){}
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function customInfo(){
-  const el=$('customInfo'), name=$('customName').value.trim(), uw=userWords(), ex=findExtra(name);
-  if(!name){ el.textContent=''; return true; }
-  if(ex){ el.style.color='var(--ok)'; el.textContent=`✅ Kenn ich als „${ex.n}“ (${ex.words.length} Wörter${uw.length?' + '+uw.length+' eigene':''}) – Bots spielen mit`; return true; }
-  if(uw.length>=5){ el.style.color='var(--ok)'; el.textContent=`✅ ${uw.length} eigene Wörter – nur diese zählen${$('partyIn').checked?' (Party: alles zählt)':''}`; return true; }
-  el.style.color='var(--lava3)'; el.textContent=`⚠️ Die Kategorie kenne ich nicht – schreib mind. 5 Wörter mit Komma rein (noch ${5-uw.length}), damit die Bots mitspielen können`; return false;
-}
-['customName','customWords','partyIn'].forEach(id=>$(id).addEventListener('input',customInfo));
-customInfo();
-
-// ---------- Highscores ----------
-const HS_KEY='lavaScores';
-const loadHS=()=>{ try{ const a=JSON.parse(localStorage.getItem(HS_KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } };
-const DIFFN=['Leicht','Mittel','Schwer'], SPEEDN=['🐢','🌋','🔥'];
-function hsHTML(list,hi){
-  if(!list.length) return '<div class="small" style="background:none">Noch keine Einträge – spiel eine Runde! 🔥</div>';
-  return list.map((e,i)=>`<div class="${i===hi?'new':''}"><span class="pos">${i+1}</span><span>${e.w?'🏆 ':''}${esc(e.n)}<br><span class="sub">Runde ${e.r} · ${DIFFN[e.d]||''} ${SPEEDN[e.s]||''} · ${new Date(e.t).toLocaleDateString('de-DE')}</span></span><span class="h">${e.m} m</span></div>`).join('');
-}
-function showHS(){ $('hsList').innerHTML=hsHTML(loadHS(),-1); const b=loadHS()[0]; $('bestLbl').textContent='🏆 '+(b?b.m+' m':'–'); }
-$('hsReset').onclick=()=>{ if(confirm('Alle Highscores löschen?')){ try{localStorage.removeItem(HS_KEY)}catch(e){} showHS(); } };
-showHS();
-
-// ---------- Sound ----------
-let AC=null, SND=true; try{ SND=localStorage.getItem('lavaSnd')!=='0'; }catch(e){}
-function beep(f,d,type,v,slide,delay){ if(!SND) return; try{
-  AC=AC||new (window.AudioContext||window.webkitAudioContext)(); const t=AC.currentTime+(delay||0);
-  const o=AC.createOscillator(), g=AC.createGain(); o.type=type||'sine'; o.frequency.setValueAtTime(f,t);
-  if(slide) o.frequency.exponentialRampToValueAtTime(slide,t+d);
-  g.gain.setValueAtTime(v||.12,t); g.gain.exponentialRampToValueAtTime(.001,t+d); o.connect(g).connect(AC.destination); o.start(t); o.stop(t+d+.02);
-}catch(e){} }
-const SFX={ok:()=>{beep(660,.1,'triangle');beep(990,.15,'triangle',.12,0,.08)}, bad:()=>beep(160,.18,'square',.06),
-  tick:()=>beep(880,.05,'square',.04), lava:()=>beep(110,.9,'sawtooth',.1,40), die:()=>beep(420,.7,'sawtooth',.1,60),
-  win:()=>[523,659,784,1047].forEach((f,i)=>beep(f,.25,'triangle',.12,0,i*.12)), go:()=>beep(1046,.25,'triangle',.12), hint:()=>beep(1200,.12,'sine',.08,1600)};
-function updSnd(){ $('sndBtn').textContent=SND?'🔊':'🔇'; }
-$('sndBtn').onclick=()=>{ SND=!SND; try{localStorage.setItem('lavaSnd',SND?'1':'0')}catch(e){} updSnd(); };
-updSnd();
+try{ const n=localStorage.getItem('lavaName'); if(n) $('nameIn').value=n; }catch(e){}
 
 const BOTS=[['Lava-Larry','🤖','#7c4dff'],['Speedy Sina','🦊','#00bfa5'],['Max Mampf','🐻','#ffb300'],['Kiki','🐸','#64dd17'],['Dr. Wort','🦉','#ff4081'],['Turbo-Tom','🐯','#40c4ff']];
 const DIFF=[{fail:.24,min:.25,pick:'short'},{fail:.11,min:.18,pick:'any'},{fail:.04,min:.1,pick:'long'}];
-// Lava: Start + Zuwachs pro Runde (vorher 4,5 + 1,25×Runde – viel zu schnell)
-const RISE=[[2.5,.35],[3,.6],[4,.95]];
-const riseFor=r=>{ const [a,b]=RISE[G.speed]||RISE[1]; return Math.round((a+b*r)*2)/2; };
 
 // ---------- Game ----------
 let G=null, PX=12, BASE=50;
@@ -339,24 +248,18 @@ const tr=()=>T[G.lang];
 
 function newGame(){
   const cName=$('customName').value.trim();
-  const shake=el=>el.animate([{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'none'}],{duration:300});
-  $('startErr').textContent='';
-  if(!S.cats.size && !cName){ shake($('catChips')); $('startErr').textContent='Wähl mindestens eine Kategorie aus!'; return; }
-  if(cName && !customInfo()){ shake($('customWords')); $('startErr').textContent='Eigene Kategorie: bitte mind. 5 Wörter eintragen.'; return; }
-  try{ localStorage.setItem('lavaCustom',JSON.stringify({n:cName,w:$('customWords').value,p:$('partyIn').checked})); }catch(e){}
+  if(!S.cats.size && !cName){ $('catChips').animate([{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'none'}],{duration:300}); return; }
   clearTimers();
   try{ localStorage.setItem('lavaSettings',JSON.stringify({...S,cats:[...S.cats]})); }catch(e){}
   const name=($('nameIn').value.trim()||'Du').slice(0,12);
   try{localStorage.setItem('lavaName',name)}catch(e){}
   const lang=S.lang;
   const pool=CATS.filter(c=>S.cats.has(c.id)).map(c=>makeCat(c[lang].q,c.i,c[lang].w.split(','),false));
-  if(cName){ const ex=findExtra(cName); const c=makeCat(T[lang].custom(cName),'✨',(ex?ex.words:[]).concat(userWords()),false); c.custom=true;
-    pool.push(c); if(pool.length>1) pool.push(c); } // eigene Kategorie kommt doppelt so oft
+  if(cName) pool.push(makeCat(T[lang].custom(cName),'✨',$('customWords').value.split(/[,\n;]/),true));
   const bots=[...BOTS].sort(()=>Math.random()-.5).slice(0,S.bots);
   const players=[{name,emoji:'😎',color:'#ff7043',human:true}].concat(bots.map(b=>({name:b[0],emoji:b[1],color:b[2]})));
-  players.forEach(p=>Object.assign(p,{h:0,alive:true,answered:false,deathRound:0,pending:null,bestN:0,bestW:''}));
-  G={players,round:0,lava:-8,used:new Set(),last:null,pool,lang,party:$('partyIn').checked,spectate:false,over:false,hints:3,time:S.time,diff:S.diff,speed:S.speed,saved:false,phase:'wait'};
-  $('need').textContent=''; arena.classList.remove('danger');
+  players.forEach(p=>Object.assign(p,{h:0,alive:true,answered:false,deathRound:0,pending:null}));
+  G={players,round:0,lava:-7,used:new Set(),last:-1,pool,lang,party:$('partyIn').checked,spectate:false,over:false,hints:3,time:S.time,diff:S.diff};
   $('answer').placeholder=T[lang].ph;
   $('lanes').innerHTML=''; $('markers').innerHTML='';
   const n=players.length;
@@ -371,8 +274,7 @@ function newGame(){
     b.style.animationDelay=(Math.random()*2.2)+'s';const s=6+Math.random()*10;b.style.width=b.style.height=s+'px';lava.appendChild(b);}
   $('startScreen').classList.add('hidden'); $('endScreen').classList.add('hidden');
   updHint(); layout(); render();
-  [3,2,1].forEach((n,i)=>later(()=>{ flash(n,'#ffd54f'); $('flash').firstChild.id='countdown'; beep(520,.12,'square',.07); },300+i*800));
-  later(()=>{ SFX.go(); startRound(); },300+3*800);
+  setTimeout(startRound,700);
 }
 
 function layout(){ const H=arena.clientHeight; PX=Math.max(7,Math.min(16,H/36)); BASE=Math.round(H*0.09)+20; $('ground').style.height=BASE+'px'; }
@@ -401,8 +303,6 @@ function render(){
   const off=Math.max(0,BASE+Math.max(focusH,G.lava)*PX-H*0.5);
   world.style.transform=`translateY(${off}px)`;
   ensureMarkers(Math.max(...G.players.map(p=>p.h),G.lava));
-  const best=loadHS()[0], rl=$('recLine');
-  if(best&&best.m>0){ rl.classList.remove('hidden'); rl.style.bottom=(BASE+best.m*PX)+'px'; } else rl.classList.add('hidden');
   $('roundLbl').textContent='Runde '+Math.max(1,G.round);
   $('aliveLbl').textContent='🧍 '+alive.length+' übrig';
 }
@@ -413,14 +313,13 @@ const later=(fn,ms)=>timers.push(setTimeout(fn,ms));
 function flash(txt,color){ $('flash').innerHTML=`<span style="color:${color||'#fff'}">${txt}</span>`; }
 function bubble(p,html,cls){ p.av.querySelector('.bubble')?.remove(); const b=document.createElement('div'); b.className='bubble'+(cls?' '+cls:''); b.innerHTML=html; p.av.appendChild(b); }
 function updHint(){ const b=$('hintBtn'); b.textContent='💡'+G.hints; const me=G.players.find(p=>p.human);
-  b.disabled = !G.hints || !me.alive || me.answered || me.hinted || G.phase!=='type' || !G.cat || !G.cat.list.some(w=>!G.used.has(fold(w)));
-  b.title = G.hints ? 'Tipp holen – Antwort zählt dann nur halb' : 'Keine Tipps mehr'; }
+  b.disabled = !G.hints || !me.alive || me.answered || me.hinted || G.phase!=='type' || !G.cat || !G.cat.list.some(w=>!G.used.has(fold(w))); }
 
 function startRound(){
   if(G.over) return;
   G.round++;
-  const uniq=new Set(G.pool).size; let c; do{ c=G.pool[Math.floor(Math.random()*G.pool.length)]; }while(uniq>1&&c===G.last);
-  G.last=c; G.cat=c; G.phase='type'; G.nextRise=riseFor(G.round); G.lastTick=99;
+  let ci; do{ci=Math.floor(Math.random()*G.pool.length)}while(G.pool.length>1&&ci===G.last);
+  G.last=ci; G.cat=G.pool[ci]; G.phase='type';
   const sp=G.spectate?0.4:1;
   G.limit=G.time*sp;
   G.players.forEach(p=>{p.answered=!p.alive; p.pending=null; p.hinted=false; p.av.querySelector('.bubble')?.remove(); if(p.alive) bubble(p,'✍️','wait');});
@@ -429,7 +328,7 @@ function startRound(){
   const me=G.players.find(p=>p.human);
   const inp=$('answer'); inp.value='';
   if(me.alive){ inp.disabled=false; inp.focus(); } else inp.disabled=true;
-  updHint(); updNeed();
+  updHint();
   const d=DIFF[G.diff];
   G.players.filter(p=>p.alive&&!p.human).forEach(p=>{
     if(Math.random()<d.fail+G.round*0.008) return;
@@ -440,30 +339,20 @@ function startRound(){
   const tick=()=>{
     const left=1-(performance.now()-G.start)/(G.limit*1000);
     $('timer').style.width=Math.max(0,left*100)+'%';
-    const sec=Math.ceil(left*G.limit); if(sec<=3&&sec>0&&sec<G.lastTick&&!G.players.find(p=>p.human).answered&&G.players.find(p=>p.human).alive){ G.lastTick=sec; SFX.tick(); }
     if(left<=0 || G.players.every(p=>p.answered)) { reveal(); return; }
     rafId=requestAnimationFrame(tick);
   };
   rafId=requestAnimationFrame(tick);
 }
 
-function updNeed(){
-  const me=G.players.find(p=>p.human), el=$('need');
-  if(!me.alive||G.phase!=='type'){ el.textContent=''; arena.classList.remove('danger'); return; }
-  const need=Math.max(0,Math.floor(G.lava+G.nextRise-me.h)+1);
-  el.className=need>=7?'warn':'';
-  el.innerHTML = G.lang==='en'
-    ? `🔥 Lava rises <b>${G.nextRise} m</b> · ${need?`you need <b>${need}+ letters</b>`:'you are safe 😎'}`
-    : `🔥 Lava steigt <b>${G.nextRise} m</b> · ${need?`du brauchst mind. <b>${need} Buchstaben</b>`:'du bist sicher 😎'}`;
-  arena.classList.toggle('danger',need>=7);
-}
-
 function botAnswer(p){
   if(!p.alive||p.answered||G.over||G.phase!=='type') return;
   let avail=G.cat.list.filter(w=>!G.used.has(fold(w)));
   let word,key;
-  if(!avail.length){ p.answered=true; bubble(p,'🤔','wait'); return; } // keine Wörter mehr übrig
-  {
+  if(!avail.length){ // eigene Kategorie ohne Wörter: Bot "denkt sich was aus"
+    const n=4+Math.floor(Math.random()*(5+G.diff*3)); word='•'.repeat(n); key='bot'+Math.random();
+    p.pending={word,key,n,half:false};
+  } else {
     avail.sort((a,b)=>letters(a)-letters(b));
     const pick=DIFF[G.diff].pick;
     if(pick==='short') avail=avail.slice(0,Math.ceil(avail.length*0.55));
@@ -482,9 +371,9 @@ $('hintBtn').addEventListener('click',()=>{
   avail.sort((a,b)=>letters(a)-letters(b));
   const mid=avail.slice(Math.floor(avail.length*0.3),Math.ceil(avail.length*0.8));
   const w=(mid.length?mid:avail)[Math.floor(Math.random()*(mid.length||avail.length))];
-  G.hints--; me.hinted=true; updHint(); SFX.hint();
+  G.hints--; me.hinted=true; updHint();
   const fb=$('feedback'); fb.style.color='var(--lava3)'; fb.textContent=tr().hint(w);
-  const inp=$('answer'); inp.value=w; inp.focus(); inp.select();
+  $('answer').focus();
 });
 
 $('form').addEventListener('submit',e=>{
@@ -494,31 +383,30 @@ $('form').addEventListener('submit',e=>{
   if(!me||!me.alive||me.answered||!val||G.over||G.phase!=='type') return;
   const fb=$('feedback');
   let key;
-  if(!/^[\p{L}\s'.&-]+$/u.test(val)) return bad(tr().letters);
-  if(G.party){ key=matchWord(G.cat,val,G.lang)||fold(val); if(key.length<3) return bad(tr().short); }
-  else { key=matchWord(G.cat,val,G.lang); if(!key) return bad(G.cat.custom?tr().unknownC:tr().unknown); }
+  if(G.party||G.cat.free){ key=fold(val); if(key.length<2||!/^[\p{L}\s'-]+$/u.test(val)) return bad(tr().letters); }
+  else { key=matchWord(G.cat,val,G.lang); if(!key) return bad(tr().unknown); }
   if(G.used.has(key)) return bad(tr().used);
   const full=letters(val), n=me.hinted?Math.floor(full/2):full;
   me.pending={word:val.charAt(0).toUpperCase()+val.slice(1),key,n,half:me.hinted};
-  me.answered=true; bubble(me,'✅','wait'); SFX.ok();
+  me.answered=true; bubble(me,'✅','wait');
   inp.disabled=true; updHint();
   fb.style.color='var(--ok)'; fb.textContent=tr().sent(n);
-  function bad(msg){ SFX.bad(); fb.style.color='var(--bad)'; fb.textContent=msg; inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake'); inp.select(); }
+  function bad(msg){ fb.style.color='var(--bad)'; fb.textContent=msg; inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake'); inp.select(); }
 });
 
 function reveal(){
   cancelAnimationFrame(rafId); timers.forEach(clearTimeout); timers=[];
-  G.phase='reveal'; $('answer').disabled=true; $('need').textContent=''; arena.classList.remove('danger'); $('timer').style.width='0%'; updHint();
+  G.phase='reveal'; $('answer').disabled=true; $('timer').style.width='0%'; updHint();
   flash(tr().reveal,'#fff');
   G.players.filter(p=>p.alive).forEach(p=>{
-    if(p.pending){ const a=p.pending; p.h+=a.n; G.used.add(a.key); if(a.n>p.bestN){p.bestN=a.n;p.bestW=a.word;}
-      bubble(p,`${esc(a.word)} <b>+${a.n}</b>${a.half?' <i>💡½</i>':''}`); }
+    if(p.pending){ const a=p.pending; p.h+=a.n; G.used.add(a.key);
+      bubble(p,`${a.word} <b>+${a.n}</b>${a.half?' <i>💡½</i>':''}`); }
     else bubble(p,p.human?tr().slow:'😵 …','fail');
   });
   later(()=>render(),250);
-  const rise=G.nextRise;
+  const rise=Math.round((4.5+G.round*1.25)*10)/10;
   later(()=>{
-    G.lava+=rise; flash(tr().lava(rise),'#ffab40'); SFX.lava(); render();
+    G.lava+=rise; flash(tr().lava(rise),'#ffab40'); render();
     later(()=>{
       const before=G.players.filter(p=>p.alive);
       before.forEach(p=>{ if(p.h<=G.lava){ p.alive=false; p.deathRound=G.round; } });
@@ -526,7 +414,6 @@ function reveal(){
       const alive=G.players.filter(p=>p.alive);
       const me=G.players.find(p=>p.human);
       const died=before.filter(p=>!p.alive);
-      if(died.length) SFX.die();
       if(alive.length===0){
         const best=Math.max(...died.map(p=>p.h));
         died.filter(p=>p.h===best).forEach(p=>{p.alive=true;p.deathRound=0;});
@@ -543,28 +430,15 @@ function reveal(){
 function ranking(){
   return [...G.players].sort((a,b)=> (b.alive-a.alive) || ((b.deathRound||999)-(a.deathRound||999)) || (b.h-a.h));
 }
-function saveScore(win){
-  const me=G.players.find(p=>p.human);
-  if(G.saved){ return G.hsIdx; } G.saved=true;
-  const e={n:me.name,m:me.h,r:me.deathRound||G.round,w:win,d:G.diff,s:G.speed,t:Date.now()};
-  const list=loadHS(); list.push(e); list.sort((a,b)=>b.m-a.m||b.r-a.r||a.t-b.t);
-  const top=list.slice(0,10); try{ localStorage.setItem(HS_KEY,JSON.stringify(top)); }catch(x){}
-  G.hsIdx=top.indexOf(e); return G.hsIdx;
-}
 function showEnd(final){
   const r=ranking(), me=G.players.find(p=>p.human), pos=r.indexOf(me)+1;
   const win=final&&me.alive;
-  const idx=saveScore(win);
-  $('newRec').textContent= idx===0&&me.h>0 ? tr().rec : idx>0 ? `⭐ Platz ${idx+1} in deiner Bestenliste!` : '';
-  $('endHs').innerHTML=hsHTML(loadHS().slice(0,5),idx<5?idx:-1); showHS();
-  if(win||idx===0) SFX.win();
   $('endTitle').textContent= win?'🏆 Du hast gewonnen!': final? '🔥 Spiel vorbei!' : '💀 Ab in die Lava!';
   const winner=r[0];
   $('endText').textContent= win?`Als Letzter übrig nach ${G.round} Runden – stark!`
     : final? `${winner.emoji} ${winner.name} gewinnt nach ${G.round} Runden. Du bist Platz ${pos}.`
     : `Runde ${G.round} – du hast es auf ${me.h} m geschafft. Noch ${G.players.filter(p=>p.alive).length} Bots kämpfen weiter.`;
-  if(me.bestW) $('endText').textContent+=` Bestes Wort: ${me.bestW} (+${me.bestN}).`;
-  $('rankList').innerHTML=r.map((p,i)=>`<div class="${p.human?'me':''}"><span class="pos">${final||p.deathRound?i+1:'?'}</span>${p.alive?p.emoji:'💀'} ${esc(p.name)}<span class="h">${p.h} m</span></div>`).join('');
+  $('rankList').innerHTML=r.map((p,i)=>`<div class="${p.human?'me':''}"><span class="pos">${final||p.deathRound?i+1:'?'}</span>${p.alive?p.emoji:'💀'} ${p.name}<span class="h">${p.h} m</span></div>`).join('');
   $('watchBtn').classList.toggle('hidden',final);
   $('endScreen').classList.remove('hidden');
   $('againBtn').focus();
@@ -572,7 +446,7 @@ function showEnd(final){
 function gameOver(){ G.over=true; G.phase='over'; $('question').textContent=tr().end; showEnd(true); }
 
 $('watchBtn').onclick=()=>{ G.spectate=true; $('endScreen').classList.add('hidden'); later(startRound,300); };
-$('againBtn').onclick=()=>{ clearTimers(); $('endScreen').classList.add('hidden'); $('startScreen').classList.remove('hidden'); showHS(); customInfo(); };
+$('againBtn').onclick=()=>{ $('endScreen').classList.add('hidden'); $('startScreen').classList.remove('hidden'); };
 $('startBtn').onclick=newGame;
 </script>
 </body>
