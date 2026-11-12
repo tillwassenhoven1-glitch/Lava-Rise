@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lava-Wort 🌋</title>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#140b12; --bg2:#22121c; --rock:#3a2530; --rock2:#4d3240;
+    --lava1:#ff3d00; --lava2:#ff9100; --lava3:#ffd54f;
+    --txt:#fff4e6; --muted:#c9a9a0; --ok:#5ce08a; --bad:#ff5a5a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Nunito',system-ui,sans-serif;overflow:hidden}
+  #app{display:flex;flex-direction:column;height:100%;max-width:900px;margin:0 auto}
+  header{padding:12px 14px 8px;text-align:center}
+  .topline{display:flex;justify-content:space-between;align-items:center;font-weight:800;color:var(--muted);font-size:14px}
+  .pill{background:var(--rock);padding:4px 10px;border-radius:99px}
+  #question{font-family:'Lilita One',cursive;font-size:clamp(26px,6vw,44px);margin:6px 0 8px;letter-spacing:.5px;text-shadow:0 3px 0 #000a;min-height:1.2em}
+  #timerWrap{height:12px;background:var(--rock);border-radius:99px;overflow:hidden}
+  #timer{height:100%;width:100%;background:linear-gradient(90deg,var(--lava3),var(--lava2),var(--lava1));border-radius:99px}
+  #arena{flex:1;position:relative;overflow:hidden;margin:8px 10px;border-radius:18px;
+    background:radial-gradient(ellipse at 50% 120%,#5a1a0c 0%,transparent 60%),linear-gradient(#1d0f18,#2a1520);
+    box-shadow:inset 0 0 40px #000c}
+  #world{position:absolute;inset:0;transition:transform .9s cubic-bezier(.3,.8,.3,1)}
+  .marker{position:absolute;left:0;right:0;border-top:1px dashed #ffffff18;font-size:11px;color:#ffffff40;padding-left:6px;font-weight:800}
+  #ground{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#4d3240,#2a1820);border-top:3px solid #6b4757}
+  .lane{position:absolute;bottom:0;top:-5000px}
+  .pillar{position:absolute;left:22%;right:22%;bottom:0;border-radius:8px 8px 0 0;transition:height .8s cubic-bezier(.3,1.4,.4,1);
+    background-image:repeating-linear-gradient(0deg,#0003 0 2px,transparent 2px 14px);box-shadow:inset -6px 0 0 #0003}
+  .avatar{position:absolute;left:50%;transform:translateX(-50%);transition:bottom .8s cubic-bezier(.3,1.4,.4,1),opacity .8s;text-align:center;width:100%}
+  .face{width:44px;height:44px;margin:0 auto;border-radius:50%;display:grid;place-items:center;font-size:24px;border:3px solid #0006;box-shadow:0 4px 0 #0005}
+  .name{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;text-shadow:0 1px 2px #000}
+  .me .face{border-color:#fff;box-shadow:0 0 0 3px #fff4,0 4px 0 #0005}
+  .bubble{position:absolute;bottom:62px;left:50%;transform:translateX(-50%);background:#fff;color:#2a1520;font-weight:800;font-size:13px;
+    padding:4px 9px;border-radius:12px;white-space:nowrap;animation:pop .35s cubic-bezier(.3,1.6,.5,1);box-shadow:0 3px 0 #0004}
+  .bubble b{color:#e65100}
+  .bubble.fail{background:#3a2530;color:var(--muted)}
+  @keyframes pop{from{transform:translateX(-50%) scale(.3);opacity:0}}
+  .dead .face{filter:grayscale(1) brightness(.6)}
+  .dead{opacity:.35}
+  #lava{position:absolute;left:-10px;right:-10px;bottom:-3000px;transition:height 1.3s cubic-bezier(.5,0,.3,1);
+    background:linear-gradient(var(--lava2) 0,var(--lava1) 30px,#c41c00 120px,#7a0f00 400px);box-shadow:0 -10px 40px #ff6d00aa;z-index:5}
+  #lava::before{content:"";position:absolute;left:0;right:0;top:-12px;height:24px;
+    background:radial-gradient(circle at 12px 14px,var(--lava2) 11px,transparent 12px) 0 0/34px 24px repeat-x;animation:wave 2.5s linear infinite}
+  #lava::after{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:var(--lava3);opacity:.7;filter:blur(3px)}
+  @keyframes wave{to{background-position:34px 0}}
+  .blob{position:absolute;top:10px;width:10px;height:10px;border-radius:50%;background:var(--lava3);opacity:.8;animation:blob 2.2s ease-in infinite}
+  @keyframes blob{0%{transform:translateY(40px) scale(.5);opacity:0}60%{opacity:.9}100%{transform:translateY(-22px) scale(1.2);opacity:0}}
+  #lavaLabel{position:absolute;top:14px;right:16px;font-family:'Lilita One';font-size:15px;color:#fff;text-shadow:0 2px 0 #7a0f00;z-index:2}
+  #flash{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:20}
+  #flash span{font-family:'Lilita One';font-size:clamp(28px,7vw,52px);text-shadow:0 4px 0 #000a;animation:flash 1.3s forwards}
+  @keyframes flash{0%{transform:scale(.4);opacity:0}20%{transform:scale(1.1);opacity:1}80%{opacity:1}100%{opacity:0;transform:scale(1)}}
+  footer{padding:6px 10px 14px}
+  form{display:flex;gap:8px}
+  #answer{flex:1;font-size:20px;font-family:'Nunito';font-weight:800;padding:12px 14px;border-radius:14px;border:3px solid var(--rock2);
+    background:var(--bg2);color:var(--txt);outline:none;min-width:0}
+  #answer:focus{border-color:var(--lava2)}
+  #answer:disabled{opacity:.5}
+  #answer.shake{animation:shake .35s;border-color:var(--bad)}
+  @keyframes shake{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
+  button{font-family:'Lilita One';font-size:20px;border:none;border-radius:14px;padding:12px 18px;cursor:pointer;color:#2a0d00;
+    background:linear-gradient(var(--lava3),var(--lava2));box-shadow:0 4px 0 #b34700;transition:transform .1s}
+  button:active{transform:translateY(3px);box-shadow:0 1px 0 #b34700}
+  button.sec{background:var(--rock2);color:var(--txt);box-shadow:0 4px 0 #1c0f15}
+  #feedback{height:22px;margin-top:6px;text-align:center;font-weight:800;font-size:15px}
+  .overlay{position:fixed;inset:0;background:#0c0509e8;display:grid;place-items:center;z-index:50;padding:16px;overflow:auto}
+  .card{background:var(--bg2);border:3px solid var(--rock2);border-radius:22px;padding:22px;max-width:440px;width:100%;text-align:center;box-shadow:0 10px 40px #000}
+  .card h1{font-family:'Lilita One';font-size:46px;line-height:1;background:linear-gradient(var(--lava3),var(--lava1));-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 3px 0 #000)}
+  .card h2{font-family:'Lilita One';font-size:30px;margin-bottom:6px}
+  .card p{color:var(--muted);margin:8px 0 14px;font-size:15px;line-height:1.4}
+  .rules{text-align:left;background:#0004;border-radius:14px;padding:10px 14px;font-size:14px;line-height:1.6;margin-bottom:14px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0;font-weight:800;text-align:left}
+  .row input[type=text]{flex:1;max-width:200px;font:800 16px 'Nunito';padding:8px 10px;border-radius:10px;border:2px solid var(--rock2);background:var(--bg);color:var(--txt)}
+  .seg{display:flex;background:var(--bg);border-radius:10px;padding:3px;gap:3px}
+  .seg button{font-size:14px;padding:6px 10px;border-radius:8px;background:transparent;color:var(--muted);box-shadow:none;font-family:'Nunito';font-weight:800}
+  .seg button.on{background:var(--lava2);color:#2a0d00}
+  .row input[type=checkbox]{width:22px;height:22px;accent-color:var(--lava2)}
+  .small{font-size:12px;color:var(--muted);font-weight:600}
+  .rank{text-align:left;margin:12px 0 16px}
+  .rank div{display:flex;gap:10px;align-items:center;padding:7px 10px;border-radius:10px;margin:4px 0;background:#0003;font-weight:800}
+  .rank div.me{outline:2px solid #fff6}
+  .rank .pos{width:28px;font-family:'Lilita One';font-size:18px;color:var(--lava3)}
+  .rank .h{margin-left:auto;color:var(--muted);font-size:13px}
+  .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .hidden{display:none!important}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
+  .chip{font:800 13px 'Nunito';padding:6px 10px;border-radius:99px;background:var(--bg);color:var(--muted);box-shadow:none;border:2px solid var(--rock2)}
+  .chip.on{background:var(--lava2);color:#2a0d00;border-color:var(--lava2)}
+  .lbl{font-weight:800;text-align:left;margin-top:12px}
+  textarea,.full{width:100%;font:700 14px 'Nunito';padding:8px 10px;border-radius:10px;border:2px solid var(--rock2);background:var(--bg);color:var(--txt);margin-top:6px;resize:vertical}
+  #hintBtn{font-size:16px;padding:12px 12px}
+  #hintBtn:disabled{opacity:.4}
+  .bubble.wait{background:#3a2530;color:#fff}
+  .bubble i{font-style:normal;font-size:11px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="topline"><span class="pill" id="roundLbl">Runde 1</span><span class="pill" id="aliveLbl">🧍 4 übrig</span></div>
+    <div id="question">Lava-Wort</div>
+    <div id="timerWrap"><div id="timer"></div></div>
+  </header>
+  <div id="arena">
+    <div id="world">
+      <div id="markers"></div>
+      <div id="ground"></div>
+      <div id="lanes"></div>
+      <div id="lava"><div id="lavaLabel"></div></div>
+    </div>
+    <div id="flash"></div>
+  </div>
+  <footer>
+    <form id="form" autocomplete="off">
+      <input id="answer" placeholder="Antwort tippen…" autocapitalize="off" spellcheck="false" disabled>
+      <button type="button" id="hintBtn" class="sec" title="Tipp – Antwort zählt nur halb">💡3</button>
+      <button type="submit">↑</button>
+    </form>
+    <div id="feedback"></div>
+  </footer>
+</div>
+
+<!-- Start -->
+<div class="overlay" id="startScreen">
+  <div class="card">
+    <h1>LAVA-WORT</h1>
+    <p>Lange Wörter = hoch klettern. Die Lava kommt! 🌋</p>
+    <div class="rules">
+      ❓ Eine Frage erscheint, z.&nbsp;B. <b>„Nenne ein Tier!“</b><br>
+      ⌨️ Tipp schnell eine passende Antwort<br>
+      🧗 Jeder Buchstabe = 1 Meter nach oben<br>
+      🔥 Nach jeder Runde steigt die Lava – immer schneller<br>
+      🏆 Wer als Letztes übrig bleibt, gewinnt!<br>
+      🚫 Jedes Wort darf nur einmal pro Spiel benutzt werden<br>💡 Max. 3 Tipps – dann zählt die Antwort nur halb<br>👀 Alle Antworten werden erst gezeigt, wenn alle fertig sind
+    </div>
+    <div class="row">Dein Name <input type="text" id="nameIn" maxlength="12" value="Till"></div>
+    <div class="row">Gegner (Bots) <div class="seg" id="botSeg"></div></div>
+    <div class="row">Stärke <div class="seg" id="diffSeg"></div></div>
+    <div class="row">Sprache <div class="seg" id="langSeg"></div></div>
+    <div class="row">Zeit pro Antwort <div class="seg" id="timeSeg"></div></div>
+    <div class="lbl">Kategorien</div>
+    <div class="chips" id="catChips"></div>
+    <div class="lbl">✨ Eigene Kategorie <span class="small">(optional)</span></div>
+    <input class="full" id="customName" placeholder="z. B. Automarken, Pokémon, Youtuber…" maxlength="30">
+    <textarea id="customWords" rows="2" placeholder="Beispielwörter mit Komma (für Bots & Tipps), z. B. Audi, BMW, Mercedes…"></textarea>
+    <div class="row"><span>Party-Modus<br><span class="small">Jedes Wort zählt – ohne Wortliste prüfen</span></span><input type="checkbox" id="partyIn"></div>
+    <div style="margin-top:16px"><button id="startBtn">🔥 Los geht's!</button></div>
+  </div>
+</div>
+
+<!-- End -->
+<div class="overlay hidden" id="endScreen">
+  <div class="card">
+    <h2 id="endTitle"></h2>
+    <p id="endText"></p>
+    <div class="rank" id="rankList"></div>
+    <div class="btns">
+      <button id="watchBtn" class="sec">👀 Zuschauen</button>
+      <button id="againBtn">🔁 Nochmal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- Wortlisten (DE / EN) ----------
+const CATS = [
+ {id:'tiere',name:'Tiere 🐾',i:'🐾',
+  de:{q:'Nenne ein Tier!',w:'Hund,Katze,Maus,Pferd,Kuh,Schwein,Schaf,Ziege,Huhn,Hahn,Ente,Gans,Esel,Hase,Kaninchen,Igel,Fuchs,Wolf,Bär,Elch,Hirsch,Reh,Wildschwein,Dachs,Eichhörnchen,Biber,Otter,Fischotter,Maulwurf,Fledermaus,Ratte,Hamster,Meerschweinchen,Chinchilla,Frettchen,Löwe,Tiger,Leopard,Gepard,Jaguar,Panther,Puma,Luchs,Elefant,Nashorn,Nilpferd,Flusspferd,Giraffe,Zebra,Antilope,Gazelle,Gnu,Büffel,Bison,Kamel,Dromedar,Lama,Alpaka,Känguru,Koala,Wombat,Schnabeltier,Ameisenbär,Gürteltier,Faultier,Affe,Gorilla,Schimpanse,Orang-Utan,Pavian,Lemur,Erdmännchen,Hyäne,Schakal,Waschbär,Stinktier,Panda,Pinguin,Eisbär,Robbe,Seehund,Walross,Seelöwe,Delfin,Wal,Blauwal,Orca,Schwertwal,Hai,Rochen,Qualle,Krake,Tintenfisch,Seestern,Seepferdchen,Krabbe,Hummer,Garnele,Muschel,Schnecke,Fisch,Goldfisch,Karpfen,Forelle,Lachs,Hering,Thunfisch,Aal,Hecht,Barsch,Krokodil,Alligator,Schildkröte,Eidechse,Leguan,Chamäleon,Gecko,Schlange,Python,Kobra,Klapperschlange,Frosch,Kröte,Salamander,Molch,Adler,Falke,Habicht,Bussard,Geier,Eule,Uhu,Rabe,Krähe,Elster,Taube,Spatz,Amsel,Meise,Specht,Papagei,Wellensittich,Kakadu,Flamingo,Storch,Reiher,Kranich,Schwan,Möwe,Pelikan,Strauß,Emu,Pfau,Truthahn,Kolibri,Tukan,Schmetterling,Biene,Hummel,Wespe,Hornisse,Ameise,Käfer,Marienkäfer,Libelle,Heuschrecke,Grille,Fliege,Mücke,Spinne,Skorpion,Wurm,Regenwurm,Raupe,Tausendfüßler,Nacktschnecke,Kakerlake,Tapir,Okapi,Yak,Mungo,Marder,Wiesel,Hermelin,Iltis,Dingo,Kojote,Polarfuchs,Rentier,Steinbock,Gämse,Murmeltier,Siebenschläfer,Axolotl,Pony,Fohlen,Kalb,Ferkel,Lamm,Küken,Welpe,Dackel,Pudel,Schäferhund,Labrador,Chihuahua,Dalmatiner,Husky,Mops,Bernhardiner,Seeadler,Steinadler,Wanderfalke,Zitteraal,Pottwal,Buckelwal,Hammerhai,Walhai,Laubfrosch,Feuersalamander,Kragenechse,Komodowaran,Waran,Riesenschildkröte'},
+  en:{q:'Name an animal!',w:'dog,cat,mouse,horse,cow,pig,sheep,goat,chicken,rooster,duck,goose,donkey,rabbit,hare,hedgehog,fox,wolf,bear,moose,deer,boar,badger,squirrel,beaver,otter,mole,bat,rat,hamster,guinea pig,chinchilla,ferret,lion,tiger,leopard,cheetah,jaguar,panther,puma,lynx,elephant,rhinoceros,rhino,hippopotamus,hippo,giraffe,zebra,antelope,gazelle,gnu,wildebeest,buffalo,bison,camel,llama,alpaca,kangaroo,koala,wombat,platypus,anteater,armadillo,sloth,monkey,gorilla,chimpanzee,orangutan,baboon,lemur,meerkat,hyena,jackal,raccoon,skunk,panda,penguin,polar bear,seal,walrus,sea lion,dolphin,whale,blue whale,orca,shark,stingray,jellyfish,octopus,squid,starfish,seahorse,crab,lobster,shrimp,mussel,snail,fish,goldfish,carp,trout,salmon,herring,tuna,eel,pike,crocodile,alligator,turtle,tortoise,lizard,iguana,chameleon,gecko,snake,python,cobra,rattlesnake,frog,toad,salamander,newt,eagle,falcon,hawk,buzzard,vulture,owl,raven,crow,magpie,pigeon,dove,sparrow,blackbird,woodpecker,parrot,budgie,cockatoo,flamingo,stork,heron,crane,swan,seagull,pelican,ostrich,emu,peacock,turkey,hummingbird,toucan,butterfly,bee,bumblebee,wasp,hornet,ant,beetle,ladybug,dragonfly,grasshopper,cricket,fly,mosquito,spider,scorpion,worm,earthworm,caterpillar,centipede,cockroach,tapir,okapi,yak,mongoose,weasel,coyote,reindeer,marmot,axolotl,pony,foal,calf,piglet,lamb,chick,puppy,kitten,dachshund,poodle,labrador,chihuahua,dalmatian,husky,pug,komodo dragon,hammerhead shark,humpback whale,tarantula,porcupine,chipmunk,warthog'}},
+ {id:'obst',name:'Obst & Gemüse 🥕',i:'🥕',
+  de:{q:'Nenne Obst oder Gemüse!',w:'Apfel,Birne,Banane,Orange,Mandarine,Zitrone,Limette,Grapefruit,Kiwi,Mango,Ananas,Papaya,Melone,Wassermelone,Honigmelone,Erdbeere,Himbeere,Brombeere,Heidelbeere,Blaubeere,Johannisbeere,Stachelbeere,Kirsche,Pflaume,Zwetschge,Pfirsich,Nektarine,Aprikose,Traube,Weintraube,Feige,Dattel,Granatapfel,Maracuja,Litschi,Kokosnuss,Avocado,Quitte,Cranberry,Holunder,Karotte,Möhre,Kartoffel,Tomate,Gurke,Paprika,Zucchini,Aubergine,Kürbis,Zwiebel,Knoblauch,Lauch,Porree,Sellerie,Brokkoli,Blumenkohl,Rosenkohl,Weißkohl,Rotkohl,Grünkohl,Wirsing,Spinat,Salat,Kopfsalat,Eisbergsalat,Rucola,Radieschen,Rettich,Rote Bete,Spargel,Erbse,Bohne,Linse,Kichererbse,Mais,Fenchel,Artischocke,Pastinake,Kohlrabi,Ingwer,Pilz,Champignon,Süßkartoffel,Chili,Okra,Mangold,Chicoree,Steckrübe,Schwarzwurzel,Topinambur,Clementine,Physalis,Kaki,Drachenfrucht,Sternfrucht,Mirabelle,Rhabarber,Olive,Peperoni,Frühlingszwiebel,Schalotte,Petersilienwurzel,Zuckermais,Zuckererbse,Gemüsezwiebel'},
+  en:{q:'Name a fruit or vegetable!',w:'apple,pear,banana,orange,mandarin,tangerine,lemon,lime,grapefruit,kiwi,mango,pineapple,papaya,melon,watermelon,honeydew,strawberry,raspberry,blackberry,blueberry,currant,gooseberry,cherry,plum,peach,nectarine,apricot,grape,fig,date,pomegranate,passion fruit,lychee,coconut,avocado,quince,cranberry,elderberry,carrot,potato,tomato,cucumber,pepper,bell pepper,zucchini,courgette,eggplant,aubergine,pumpkin,squash,onion,garlic,leek,celery,broccoli,cauliflower,brussels sprout,cabbage,red cabbage,kale,spinach,lettuce,arugula,rocket,radish,beetroot,asparagus,pea,bean,green bean,lentil,chickpea,corn,sweetcorn,fennel,artichoke,parsnip,kohlrabi,ginger,mushroom,sweet potato,chili,okra,chard,turnip,rhubarb,olive,shallot,spring onion,dragon fruit,star fruit,persimmon,clementine,watercress,butternut squash,jalapeno,cantaloupe,mulberry,guava,kumquat'}},
+ {id:'land',name:'Länder 🌍',i:'🌍',
+  de:{q:'Nenne ein Land!',w:'Deutschland,Österreich,Schweiz,Frankreich,Italien,Spanien,Portugal,Niederlande,Holland,Belgien,Luxemburg,Dänemark,Schweden,Norwegen,Finnland,Island,Irland,England,Schottland,Wales,Großbritannien,Polen,Tschechien,Slowakei,Ungarn,Rumänien,Bulgarien,Griechenland,Türkei,Kroatien,Serbien,Slowenien,Bosnien,Albanien,Montenegro,Nordmazedonien,Ukraine,Russland,Weißrussland,Belarus,Litauen,Lettland,Estland,Moldawien,Malta,Zypern,Andorra,Monaco,Liechtenstein,Vatikan,San Marino,USA,Amerika,Kanada,Mexiko,Brasilien,Argentinien,Chile,Peru,Kolumbien,Venezuela,Ecuador,Bolivien,Paraguay,Uruguay,Kuba,Jamaika,Panama,Costa Rica,Guatemala,Honduras,Nicaragua,Ägypten,Marokko,Algerien,Tunesien,Libyen,Nigeria,Ghana,Kenia,Äthiopien,Somalia,Südafrika,Namibia,Botswana,Simbabwe,Sambia,Tansania,Uganda,Ruanda,Kongo,Kamerun,Senegal,Mali,Madagaskar,Sudan,China,Japan,Indien,Pakistan,Bangladesch,Indonesien,Thailand,Vietnam,Kambodscha,Laos,Myanmar,Malaysia,Singapur,Philippinen,Südkorea,Nordkorea,Korea,Mongolei,Nepal,Bhutan,Afghanistan,Iran,Irak,Syrien,Libanon,Israel,Jordanien,Saudi-Arabien,Jemen,Oman,Katar,Kuwait,Kasachstan,Usbekistan,Georgien,Armenien,Aserbaidschan,Australien,Neuseeland,Fidschi,Dominikanische Republik,Elfenbeinküste,Mauritius,Seychellen,Malediven,Sri Lanka,Taiwan,Turkmenistan,Kirgisistan,Tadschikistan'},
+  en:{q:'Name a country!',w:'Germany,Austria,Switzerland,France,Italy,Spain,Portugal,Netherlands,Holland,Belgium,Luxembourg,Denmark,Sweden,Norway,Finland,Iceland,Ireland,England,Scotland,Wales,United Kingdom,Great Britain,Poland,Czech Republic,Czechia,Slovakia,Hungary,Romania,Bulgaria,Greece,Turkey,Croatia,Serbia,Slovenia,Bosnia,Albania,Montenegro,North Macedonia,Ukraine,Russia,Belarus,Lithuania,Latvia,Estonia,Moldova,Malta,Cyprus,Andorra,Monaco,Liechtenstein,Vatican,San Marino,USA,United States,America,Canada,Mexico,Brazil,Argentina,Chile,Peru,Colombia,Venezuela,Ecuador,Bolivia,Paraguay,Uruguay,Cuba,Jamaica,Panama,Costa Rica,Guatemala,Honduras,Nicaragua,Egypt,Morocco,Algeria,Tunisia,Libya,Nigeria,Ghana,Kenya,Ethiopia,Somalia,South Africa,Namibia,Botswana,Zimbabwe,Zambia,Tanzania,Uganda,Rwanda,Congo,Cameroon,Senegal,Mali,Madagascar,Sudan,China,Japan,India,Pakistan,Bangladesh,Indonesia,Thailand,Vietnam,Cambodia,Laos,Myanmar,Malaysia,Singapore,Philippines,South Korea,North Korea,Korea,Mongolia,Nepal,Bhutan,Afghanistan,Iran,Iraq,Syria,Lebanon,Israel,Jordan,Saudi Arabia,Yemen,Oman,Qatar,Kuwait,Kazakhstan,Uzbekistan,Georgia,Armenia,Azerbaijan,Australia,New Zealand,Fiji,Dominican Republic,Ivory Coast,Mauritius,Seychelles,Maldives,Sri Lanka,Taiwan,Turkmenistan,Kyrgyzstan,Tajikistan'}},
+ {id:'beruf',name:'Berufe 👷',i:'👷',
+  de:{q:'Nenne einen Beruf!',w:'Arzt,Lehrer,Polizist,Feuerwehrmann,Feuerwehrfrau,Bäcker,Metzger,Fleischer,Koch,Kellner,Friseur,Elektriker,Klempner,Installateur,Schreiner,Tischler,Maurer,Dachdecker,Maler,Mechaniker,Mechatroniker,Ingenieur,Architekt,Programmierer,Informatiker,Softwareentwickler,Anwalt,Rechtsanwalt,Richter,Notar,Apotheker,Tierarzt,Zahnarzt,Krankenpfleger,Pfleger,Hebamme,Sanitäter,Notarzt,Pilot,Stewardess,Flugbegleiter,Lokführer,Busfahrer,Taxifahrer,Fahrer,Briefträger,Postbote,Verkäufer,Kassierer,Bankkaufmann,Kaufmann,Buchhalter,Steuerberater,Journalist,Reporter,Fotograf,Schauspieler,Sänger,Musiker,Tänzer,Künstler,Schriftsteller,Autor,Gärtner,Landwirt,Bauer,Förster,Fischer,Soldat,Astronaut,Wissenschaftler,Forscher,Physiker,Chemiker,Biologe,Psychologe,Erzieher,Sozialarbeiter,Pfarrer,Priester,Politiker,Bürgermeister,Bundeskanzler,Manager,Sekretär,Hausmeister,Putzkraft,Reinigungskraft,Florist,Optiker,Goldschmied,Schneider,Schuster,Tierpfleger,Zoowärter,Detektiv,Youtuber,Streamer,Influencer,Designer,Grafikdesigner,Moderator,Trainer,Schiedsrichter,Fußballspieler,Profifußballer,Bibliothekar,Dolmetscher,Übersetzer,Konditor,Barkeeper,Winzer,Imker,Physiotherapeut,Kosmetiker,Zahntechniker,Kapitän,Matrose,Lagerist,Spediteur,Elektroniker,Augenarzt,Chirurg,Kinderarzt,Veterinär,Mathematiker,Historiker,Archäologe,Meteorologe,Zauberer,Clown,Model,Regisseur,Kameramann,Bodyguard,Türsteher,Pizzabäcker,Sommelier,Hufschmied,Schornsteinfeger'},
+  en:{q:'Name a job!',w:'doctor,teacher,police officer,policeman,firefighter,baker,butcher,cook,chef,waiter,waitress,hairdresser,barber,electrician,plumber,carpenter,bricklayer,roofer,painter,mechanic,engineer,architect,programmer,developer,software developer,lawyer,attorney,judge,notary,pharmacist,vet,veterinarian,dentist,nurse,midwife,paramedic,pilot,flight attendant,train driver,bus driver,taxi driver,driver,truck driver,postman,mail carrier,salesperson,cashier,banker,accountant,journalist,reporter,photographer,actor,actress,singer,musician,dancer,artist,writer,author,gardener,farmer,forester,fisherman,soldier,astronaut,scientist,researcher,physicist,chemist,biologist,psychologist,social worker,priest,pastor,politician,mayor,president,manager,secretary,janitor,cleaner,florist,optician,goldsmith,jeweler,tailor,shoemaker,zookeeper,detective,youtuber,streamer,influencer,designer,graphic designer,host,presenter,coach,trainer,referee,footballer,librarian,interpreter,translator,confectioner,bartender,winemaker,beekeeper,physiotherapist,captain,sailor,surgeon,pediatrician,mathematician,historian,archaeologist,meteorologist,magician,clown,model,director,cameraman,bodyguard,bouncer,chimney sweep,receptionist,lifeguard,security guard,delivery driver'}},
+ {id:'sport',name:'Sport ⚽',i:'⚽',
+  de:{q:'Nenne eine Sportart!',w:'Fußball,Basketball,Handball,Volleyball,Beachvolleyball,Tennis,Tischtennis,Badminton,Squash,Golf,Minigolf,Hockey,Eishockey,Feldhockey,Rugby,Football,Baseball,Cricket,Schwimmen,Tauchen,Surfen,Windsurfen,Kitesurfen,Segeln,Rudern,Kanu,Kajak,Wasserball,Leichtathletik,Laufen,Joggen,Marathon,Sprint,Hochsprung,Weitsprung,Stabhochsprung,Speerwurf,Kugelstoßen,Diskuswurf,Hürdenlauf,Triathlon,Radfahren,Radsport,Mountainbiken,BMX,Skateboarden,Skaten,Inlineskaten,Rollschuhlaufen,Eislaufen,Eiskunstlauf,Eisschnelllauf,Skifahren,Snowboarden,Skispringen,Langlauf,Biathlon,Rodeln,Bobfahren,Klettern,Bouldern,Bergsteigen,Wandern,Boxen,Kickboxen,Karate,Judo,Taekwondo,Ringen,Fechten,Bogenschießen,Schießen,Reiten,Turnen,Gymnastik,Yoga,Pilates,Tanzen,Ballett,Bowling,Kegeln,Billard,Darts,Schach,Curling,Polo,Lacrosse,Fitness,Crossfit,Gewichtheben,Bodybuilding,Parkour,Turmspringen,Synchronschwimmen,Motocross,Motorsport,Kartfahren,Paragliding,Fallschirmspringen,Bungeejumping,Angeln,Frisbee,Völkerball,Faustball,Wakeboarden,Wasserski,Springreiten,Dressurreiten,Trampolinspringen,Rhönradturnen,Kunstturnen,Sumoringen,Kampfsport,Rollhockey,Unterwasserrugby,Stand-up-Paddling'},
+  en:{q:'Name a sport!',w:'football,soccer,basketball,handball,volleyball,beach volleyball,tennis,table tennis,ping pong,badminton,squash,golf,mini golf,hockey,ice hockey,field hockey,rugby,american football,baseball,cricket,swimming,diving,surfing,windsurfing,kitesurfing,sailing,rowing,canoeing,kayaking,water polo,athletics,running,jogging,marathon,sprint,high jump,long jump,pole vault,javelin,shot put,discus,hurdles,triathlon,cycling,mountain biking,bmx,skateboarding,inline skating,roller skating,ice skating,figure skating,speed skating,skiing,snowboarding,ski jumping,cross country skiing,biathlon,sledding,bobsleigh,climbing,bouldering,mountaineering,hiking,boxing,kickboxing,karate,judo,taekwondo,wrestling,fencing,archery,shooting,horse riding,riding,gymnastics,yoga,pilates,dancing,ballet,bowling,billiards,pool,snooker,darts,chess,curling,polo,lacrosse,fitness,crossfit,weightlifting,bodybuilding,parkour,motocross,motorsport,karting,paragliding,skydiving,bungee jumping,fishing,frisbee,dodgeball,wakeboarding,water skiing,trampolining,sumo,martial arts,softball,netball,rollerblading,snorkeling,paddleboarding,equestrian'}},
+ {id:'stadt',name:'Städte 🏙️',i:'🏙️',
+  de:{q:'Nenne eine Stadt!',w:'Berlin,Hamburg,München,Köln,Frankfurt,Stuttgart,Düsseldorf,Dortmund,Essen,Leipzig,Bremen,Dresden,Hannover,Nürnberg,Duisburg,Bochum,Wuppertal,Bielefeld,Bonn,Münster,Mannheim,Karlsruhe,Augsburg,Wiesbaden,Mönchengladbach,Gelsenkirchen,Aachen,Kiel,Rostock,Mainz,Freiburg,Erfurt,Magdeburg,Lübeck,Oberhausen,Krefeld,Kassel,Halle,Potsdam,Saarbrücken,Hamm,Neuss,Oldenburg,Osnabrück,Heidelberg,Darmstadt,Regensburg,Würzburg,Ulm,Jena,Trier,Koblenz,Jüchen,Grevenbroich,Willich,Viersen,Wien,Graz,Linz,Salzburg,Innsbruck,Zürich,Bern,Basel,Genf,Luzern,Paris,Lyon,Marseille,Nizza,London,Manchester,Liverpool,Edinburgh,Dublin,Amsterdam,Rotterdam,Brüssel,Antwerpen,Madrid,Barcelona,Valencia,Sevilla,Lissabon,Porto,Rom,Mailand,Venedig,Florenz,Neapel,Turin,Athen,Istanbul,Ankara,Moskau,Kiew,Warschau,Krakau,Prag,Budapest,Bukarest,Sofia,Belgrad,Zagreb,Oslo,Stockholm,Kopenhagen,Helsinki,Reykjavik,New York,Los Angeles,Chicago,Miami,Boston,Washington,San Francisco,Las Vegas,Seattle,Toronto,Vancouver,Montreal,Mexiko-Stadt,Rio de Janeiro,Sao Paulo,Buenos Aires,Lima,Kairo,Kapstadt,Johannesburg,Nairobi,Marrakesch,Dubai,Doha,Tokio,Tokyo,Osaka,Kyoto,Peking,Shanghai,Hongkong,Seoul,Bangkok,Singapur,Delhi,Mumbai,Sydney,Melbourne,Jerusalem,Teheran,Bagdad,Leverkusen,Solingen,Remscheid,Hagen,Paderborn,Göttingen,Wolfsburg,Braunschweig,Ingolstadt,Konstanz,Flensburg,Schwerin,Cottbus,Chemnitz,Zwickau,Recklinghausen,Bottrop,Herne,Mülheim,Ludwigshafen,Kaiserslautern,Pforzheim,Heilbronn,Reutlingen,Tübingen,Erlangen,Fürth,Bamberg,Bayreuth,Passau,Rosenheim'},
+  en:{q:'Name a city!',w:'Berlin,Hamburg,Munich,Cologne,Frankfurt,Stuttgart,Dusseldorf,Dortmund,Leipzig,Bremen,Dresden,Hanover,Nuremberg,Bonn,Vienna,Zurich,Geneva,Paris,Lyon,Marseille,Nice,London,Manchester,Liverpool,Birmingham,Leeds,Bristol,Oxford,Cambridge,Edinburgh,Glasgow,Dublin,Belfast,Amsterdam,Rotterdam,Brussels,Madrid,Barcelona,Valencia,Seville,Lisbon,Porto,Rome,Milan,Venice,Florence,Naples,Turin,Athens,Istanbul,Moscow,Kyiv,Kiev,Warsaw,Krakow,Prague,Budapest,Bucharest,Oslo,Stockholm,Copenhagen,Helsinki,Reykjavik,New York,Los Angeles,Chicago,Houston,Phoenix,Philadelphia,San Antonio,San Diego,Dallas,Miami,Boston,Washington,San Francisco,Las Vegas,Seattle,Denver,Atlanta,Detroit,Orlando,New Orleans,Nashville,Toronto,Vancouver,Montreal,Mexico City,Rio de Janeiro,Sao Paulo,Buenos Aires,Lima,Cairo,Cape Town,Johannesburg,Nairobi,Marrakesh,Dubai,Doha,Tokyo,Osaka,Kyoto,Beijing,Shanghai,Hong Kong,Seoul,Bangkok,Singapore,Delhi,New Delhi,Mumbai,Sydney,Melbourne,Brisbane,Perth,Auckland,Jerusalem,Tehran,Baghdad,Manila,Jakarta,Hanoi,Lagos,Casablanca'}},
+ {id:'koerper',name:'Körper 💪',i:'💪',
+  de:{q:'Nenne einen Körperteil!',w:'Kopf,Haar,Stirn,Auge,Augenbraue,Wimper,Nase,Mund,Lippe,Zunge,Zahn,Ohr,Wange,Kinn,Hals,Nacken,Schulter,Arm,Oberarm,Unterarm,Ellenbogen,Handgelenk,Hand,Finger,Daumen,Zeigefinger,Mittelfinger,Ringfinger,Fingernagel,Nagel,Brust,Bauch,Bauchnabel,Rücken,Hüfte,Po,Gesäß,Bein,Oberschenkel,Unterschenkel,Knie,Kniescheibe,Wade,Schienbein,Knöchel,Fuß,Ferse,Zeh,Zehe,Herz,Lunge,Leber,Niere,Magen,Darm,Gehirn,Hirn,Haut,Knochen,Muskel,Sehne,Rippe,Wirbelsäule,Schädel,Kiefer,Gaumen,Mandel,Schläfe,Achsel,Handfläche,Fußsohle,Blut,Ader,Vene,Arterie,Bizeps,Trizeps,Oberschenkelknochen,Augenlid,Pupille,Iris,Trommelfell,Ohrläppchen,Kehlkopf,Speiseröhre,Luftröhre,Zwerchfell,Blinddarm,Bauchspeicheldrüse,Schlüsselbein,Brustkorb,Kniekehle,Handrücken,Fußgelenk,Großzehe,Nasenloch,Milz,Galle,Blase'},
+  en:{q:'Name a body part!',w:'head,hair,forehead,eye,eyebrow,eyelash,nose,mouth,lip,tongue,tooth,teeth,ear,cheek,chin,neck,shoulder,arm,upper arm,forearm,elbow,wrist,hand,finger,thumb,index finger,fingernail,nail,chest,belly,stomach,belly button,navel,back,hip,bottom,leg,thigh,knee,kneecap,calf,shin,ankle,foot,feet,heel,toe,heart,lung,liver,kidney,intestine,brain,skin,bone,muscle,tendon,rib,spine,skull,jaw,palate,tonsil,temple,armpit,palm,sole,blood,vein,artery,biceps,triceps,eyelid,pupil,iris,eardrum,earlobe,larynx,throat,esophagus,windpipe,diaphragm,appendix,pancreas,collarbone,ribcage,knuckle,nostril,spleen,bladder,waist,lap'}},
+ {id:'instrument',name:'Instrumente 🎸',i:'🎸',
+  de:{q:'Nenne ein Musikinstrument!',w:'Gitarre,E-Gitarre,Bass,Bassgitarre,Klavier,Piano,Flügel,Keyboard,Orgel,Akkordeon,Schlagzeug,Trommel,Pauke,Xylophon,Glockenspiel,Triangel,Tamburin,Bongo,Cajon,Geige,Violine,Bratsche,Cello,Kontrabass,Harfe,Ukulele,Banjo,Mandoline,Zither,Sitar,Flöte,Querflöte,Blockflöte,Panflöte,Klarinette,Oboe,Fagott,Saxophon,Saxofon,Trompete,Posaune,Tuba,Horn,Waldhorn,Mundharmonika,Dudelsack,Didgeridoo,Synthesizer,Kastagnetten,Becken,Marimba,Maultrommel,Okarina,Melodica,Kalimba,Steeldrum,Theremin,Cembalo,Tenorsaxophon,Altsaxophon,Akustikgitarre,Konzertgitarre,Kirchenorgel,Drehorgel,Handtrommel,Djembe,Rassel,Glocke,Kesselpauke,Flügelhorn,Piccoloflöte,Hackbrett,Lyra,Laute,Balalaika,Bandoneon,Mundorgel,Beatbox'},
+  en:{q:'Name a musical instrument!',w:'guitar,electric guitar,bass,bass guitar,piano,grand piano,keyboard,organ,accordion,drums,drum,timpani,xylophone,glockenspiel,triangle,tambourine,bongo,cajon,violin,fiddle,viola,cello,double bass,harp,ukulele,banjo,mandolin,zither,sitar,flute,recorder,pan flute,clarinet,oboe,bassoon,saxophone,trumpet,trombone,tuba,horn,french horn,harmonica,bagpipes,didgeridoo,synthesizer,castanets,cymbal,marimba,jaw harp,ocarina,melodica,kalimba,steel drum,theremin,harpsichord,acoustic guitar,djembe,rattle,bell,cowbell,piccolo,dulcimer,lyre,lute,balalaika,bandoneon,beatbox,maracas,gong,cornet,euphonium,sousaphone,bugle,kazoo,tabla'}},
+ {id:'kleidung',name:'Kleidung 👕',i:'👕',
+  de:{q:'Nenne ein Kleidungsstück!',w:'Hose,Jeans,Shorts,Rock,Kleid,Hemd,Bluse,Shirt,T-Shirt,Pullover,Pulli,Hoodie,Jacke,Mantel,Weste,Anzug,Sakko,Krawatte,Fliege,Schal,Mütze,Cap,Hut,Handschuh,Socke,Strumpf,Strumpfhose,Leggings,Unterhose,Boxershorts,Unterhemd,Schlafanzug,Pyjama,Bademantel,Badehose,Bikini,Badeanzug,Schuh,Turnschuh,Sneaker,Stiefel,Sandale,Hausschuh,Gürtel,Jogginghose,Trainingsanzug,Regenjacke,Daunenjacke,Lederjacke,Strickjacke,Overall,Latzhose,Poncho,Tunika,Dirndl,Lederhose,Kimono,Uniform,Trikot,Stirnband,Halstuch,Fäustling,Sweatshirt,Sweatjacke,Polohemd,Poloshirt,Tanktop,Top,Cardigan,Blazer,Parka,Anorak,Regenmantel,Wintermantel,Kapuzenpulli,Rollkragenpullover,Minirock,Abendkleid,Brautkleid,Smoking,Pantoffel,Gummistiefel,Wanderschuh,Fußballschuh,Badelatschen,Flipflop,Beanie,Sonnenhut,Strohhut,Zylinder,Kopftuch,Ohrenschützer,Kniestrumpf'},
+  en:{q:'Name a piece of clothing!',w:'trousers,pants,jeans,shorts,skirt,dress,shirt,blouse,t-shirt,sweater,jumper,pullover,hoodie,jacket,coat,vest,waistcoat,suit,blazer,tie,bow tie,scarf,hat,cap,beanie,glove,mitten,sock,stocking,tights,leggings,underpants,underwear,boxers,undershirt,bra,pajamas,pyjamas,bathrobe,swimming trunks,bikini,swimsuit,shoe,sneaker,trainer,boot,sandal,slipper,belt,sweatpants,tracksuit,raincoat,parka,anorak,leather jacket,cardigan,overalls,dungarees,poncho,tunic,kimono,uniform,jersey,headband,bandana,sweatshirt,polo shirt,tank top,top,miniskirt,evening dress,wedding dress,tuxedo,flip flop,rain boot,wellington,hiking boot,sun hat,straw hat,top hat,headscarf,earmuffs,knee sock,apron,gown,cloak,cape,turtleneck,crop top,windbreaker,beret'}},
+ {id:'kueche',name:'Küche 🍳',i:'🍳',
+  de:{q:'Nenne etwas aus der Küche!',w:'Löffel,Gabel,Messer,Teller,Tasse,Becher,Glas,Schüssel,Topf,Pfanne,Herd,Ofen,Backofen,Mikrowelle,Kühlschrank,Gefrierschrank,Spülmaschine,Geschirrspüler,Toaster,Wasserkocher,Kaffeemaschine,Mixer,Pürierstab,Schneebesen,Kochlöffel,Pfannenwender,Schöpfkelle,Kelle,Sieb,Nudelsieb,Reibe,Schneidebrett,Nudelholz,Backblech,Auflaufform,Dosenöffner,Flaschenöffner,Korkenzieher,Waage,Küchenwaage,Messbecher,Spülbecken,Spüle,Geschirrtuch,Topflappen,Schürze,Thermoskanne,Teekanne,Kanne,Eierbecher,Salzstreuer,Pfefferstreuer,Pfeffermühle,Brotkasten,Mülleimer,Wok,Grill,Fritteuse,Heißluftfritteuse,Eismaschine,Entsafter,Knoblauchpresse,Kartoffelschäler,Sparschäler,Zange,Grillzange,Frischhaltefolie,Alufolie,Brotmesser,Serviette,Tablett,Trichter,Mörser,Teesieb,Küchenmaschine,Dunstabzugshaube,Spülmittel,Schwamm,Kochtopf,Bratpfanne,Schnellkochtopf,Muffinform,Springform,Backpapier,Teigschaber,Eieruhr,Küchenrolle,Vorratsdose,Gewürzregal,Besteck,Untersetzer,Kaffeetasse,Weinglas,Suppenteller,Salatschüssel,Kuchengabel,Teelöffel,Esslöffel'},
+  en:{q:'Name something in the kitchen!',w:'spoon,fork,knife,plate,cup,mug,glass,bowl,pot,pan,stove,cooker,oven,microwave,fridge,refrigerator,freezer,dishwasher,toaster,kettle,coffee machine,coffee maker,blender,mixer,hand blender,whisk,wooden spoon,spatula,ladle,sieve,strainer,colander,grater,cutting board,chopping board,rolling pin,baking tray,baking sheet,casserole dish,can opener,tin opener,bottle opener,corkscrew,scale,kitchen scale,measuring cup,sink,dish towel,tea towel,oven mitt,pot holder,apron,thermos,teapot,jug,pitcher,egg cup,salt shaker,pepper shaker,pepper mill,bread bin,trash can,bin,wok,grill,deep fryer,air fryer,ice cream maker,juicer,garlic press,peeler,potato peeler,tongs,cling film,plastic wrap,aluminium foil,tin foil,bread knife,napkin,tray,funnel,mortar,pestle,food processor,extractor hood,dish soap,sponge,saucepan,frying pan,pressure cooker,muffin tin,cake tin,baking paper,egg timer,paper towel,container,spice rack,cutlery,coaster,wine glass,teaspoon,tablespoon,saucer,rice cooker'}}
+];
+const T={
+ de:{unknown:'❌ Kenne ich nicht – nochmal!',used:'🚫 Schon benutzt!',letters:'❌ Nur Buchstaben bitte',sent:n=>`✅ Abgegeben (+${n}) – warte auf die anderen…`,
+   hint:w=>`💡 Tipp: ${w} – zählt nur halb`,nohint:'💡 Keine Tipps mehr',slow:'⏰ Zu langsam!',reveal:'👀 Auflösung!',lava:r=>`🌋 Lava +${r} m`,gone:n=>`💀 ${n} – weg!`,custom:n=>`Nenne: ${n}!`,ph:'Antwort tippen…',end:'🏁 Ende!'},
+ en:{unknown:"❌ Don't know that – try again!",used:'🚫 Already used!',letters:'❌ Letters only',sent:n=>`✅ Locked in (+${n}) – waiting for the others…`,
+   hint:w=>`💡 Hint: ${w} – counts half`,nohint:'💡 No hints left',slow:'⏰ Too slow!',reveal:'👀 Reveal!',lava:r=>`🌋 Lava +${r} m`,gone:n=>`💀 ${n} – out!`,custom:n=>`Name: ${n}!`,ph:'Type your answer…',end:'🏁 The end!'}
+};
+const fold = s => s.toLowerCase().replace(/ß/g,'ss').normalize('NFD').replace(/[̀-ͯ]/g,'')
+  .replace(/ae/g,'a').replace(/oe/g,'o').replace(/ue/g,'u').replace(/[^a-z]/g,'');
+const letters = s => (s.match(/\p{L}/gu)||[]).length;
+const SUF={de:['innen','nen','en','er','in','n','e','s'],en:['es','s']};
+function makeCat(q,i,words,free){ const list=[...new Set(words.map(w=>w.trim()).filter(Boolean))]; return {q,i,list,free,map:new Map(list.map(x=>[fold(x),x]))}; }
+function matchWord(cat,input,lang){
+  const k=fold(input); if(k.length<2) return null;
+  if(cat.map.has(k)) return k;
+  if(lang==='en'&&k.endsWith('ies')){const b=k.slice(0,-3)+'y'; if(cat.map.has(b)) return b;}
+  for(const s of SUF[lang]){ if(k.endsWith(s)&&k.length-s.length>=2){const b=k.slice(0,-s.length); if(cat.map.has(b)) return b;} }
+  return null;
+}
+
+// ---------- Setup UI ----------
+const $=id=>document.getElementById(id);
+const S={bots:3,diff:1,lang:'de',time:10,cats:new Set(CATS.map(c=>c.id))};
+try{ Object.assign(S,JSON.parse(localStorage.getItem('lavaSettings')||'{}')); S.cats=new Set(S.cats); }catch(e){ S.cats=new Set(CATS.map(c=>c.id)); }
+if(!S.cats.size) CATS.forEach(c=>S.cats.add(c.id));
+function seg(el,opts,key){ el.innerHTML=''; opts.forEach(([v,l])=>{const b=document.createElement('button');b.type='button';b.textContent=l;
+  b.className=S[key]===v?'on':''; b.onclick=()=>{S[key]=v;seg(el,opts,key)}; el.appendChild(b);}); }
+seg($('botSeg'),[[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']],'bots');
+seg($('diffSeg'),[[0,'Leicht'],[1,'Mittel'],[2,'Schwer']],'diff');
+seg($('langSeg'),[['de','🇩🇪 Deutsch'],['en','🇬🇧 English']],'lang');
+seg($('timeSeg'),[[5,'5s'],[8,'8s'],[10,'10s'],[15,'15s'],[20,'20s']],'time');
+function chips(){ const box=$('catChips'); box.innerHTML='';
+  CATS.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='chip'+(S.cats.has(c.id)?' on':'');b.textContent=c.name;
+    b.onclick=()=>{ if(S.cats.has(c.id)) S.cats.delete(c.id); else S.cats.add(c.id); chips(); }; box.appendChild(b);});
+  const all=document.createElement('button');all.type='button';all.className='chip';all.textContent=S.cats.size===CATS.length?'✖ Keine':'✔ Alle';
+  all.onclick=()=>{ if(S.cats.size===CATS.length) S.cats.clear(); else CATS.forEach(c=>S.cats.add(c.id)); chips(); }; box.appendChild(all);
+}
+chips();
+try{ const n=localStorage.getItem('lavaName'); if(n) $('nameIn').value=n; }catch(e){}
+
+const BOTS=[['Lava-Larry','🤖','#7c4dff'],['Speedy Sina','🦊','#00bfa5'],['Max Mampf','🐻','#ffb300'],['Kiki','🐸','#64dd17'],['Dr. Wort','🦉','#ff4081'],['Turbo-Tom','🐯','#40c4ff']];
+const DIFF=[{fail:.24,min:.25,pick:'short'},{fail:.11,min:.18,pick:'any'},{fail:.04,min:.1,pick:'long'}];
+
+// ---------- Game ----------
+let G=null, PX=12, BASE=50;
+const arena=$('arena'), world=$('world');
+const tr=()=>T[G.lang];
+
+function newGame(){
+  const cName=$('customName').value.trim();
+  if(!S.cats.size && !cName){ $('catChips').animate([{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'none'}],{duration:300}); return; }
+  clearTimers();
+  try{ localStorage.setItem('lavaSettings',JSON.stringify({...S,cats:[...S.cats]})); }catch(e){}
+  const name=($('nameIn').value.trim()||'Du').slice(0,12);
+  try{localStorage.setItem('lavaName',name)}catch(e){}
+  const lang=S.lang;
+  const pool=CATS.filter(c=>S.cats.has(c.id)).map(c=>makeCat(c[lang].q,c.i,c[lang].w.split(','),false));
+  if(cName) pool.push(makeCat(T[lang].custom(cName),'✨',$('customWords').value.split(/[,\n;]/),true));
+  const bots=[...BOTS].sort(()=>Math.random()-.5).slice(0,S.bots);
+  const players=[{name,emoji:'😎',color:'#ff7043',human:true}].concat(bots.map(b=>({name:b[0],emoji:b[1],color:b[2]})));
+  players.forEach(p=>Object.assign(p,{h:0,alive:true,answered:false,deathRound:0,pending:null}));
+  G={players,round:0,lava:-7,used:new Set(),last:-1,pool,lang,party:$('partyIn').checked,spectate:false,over:false,hints:3,time:S.time,diff:S.diff};
+  $('answer').placeholder=T[lang].ph;
+  $('lanes').innerHTML=''; $('markers').innerHTML='';
+  const n=players.length;
+  players.forEach((p,i)=>{
+    const lane=document.createElement('div'); lane.className='lane'+(p.human?' me':'');
+    lane.style.left=(i/n*100)+'%'; lane.style.width=(100/n)+'%';
+    lane.innerHTML=`<div class="pillar" style="background-color:${p.color}"></div><div class="avatar"><div class="face" style="background:${p.color}">${p.emoji}</div><div class="name">${p.human?'⭐ ':''}${p.name}</div></div>`;
+    $('lanes').appendChild(lane); p.el=lane; p.pillar=lane.querySelector('.pillar'); p.av=lane.querySelector('.avatar');
+  });
+  const lava=$('lava'); lava.querySelectorAll('.blob').forEach(b=>b.remove());
+  for(let i=0;i<14;i++){const b=document.createElement('div');b.className='blob';b.style.left=(Math.random()*100)+'%';
+    b.style.animationDelay=(Math.random()*2.2)+'s';const s=6+Math.random()*10;b.style.width=b.style.height=s+'px';lava.appendChild(b);}
+  $('startScreen').classList.add('hidden'); $('endScreen').classList.add('hidden');
+  updHint(); layout(); render();
+  setTimeout(startRound,700);
+}
+
+function layout(){ const H=arena.clientHeight; PX=Math.max(7,Math.min(16,H/36)); BASE=Math.round(H*0.09)+20; $('ground').style.height=BASE+'px'; }
+window.addEventListener('resize',()=>{ if(G){layout();render();} });
+
+function ensureMarkers(top){
+  const box=$('markers'); let have=box.children.length*10;
+  while(have<top+60){ have+=10; const m=document.createElement('div'); m.className='marker'; m.dataset.v=have; m.textContent=have+' m'; box.appendChild(m); }
+  [...box.children].forEach(m=>m.style.bottom=(BASE+m.dataset.v*PX)+'px');
+}
+
+function render(){
+  const H=arena.clientHeight;
+  G.players.forEach(p=>{
+    p.pillar.style.height=(BASE+p.h*PX)+'px';
+    const y=p.alive?p.h:Math.min(p.h,G.lava-3);
+    p.av.style.bottom=(BASE+y*PX)+'px';
+    p.el.classList.toggle('dead',!p.alive);
+    if(!p.alive) p.av.querySelector('.face').textContent='💀';
+  });
+  $('lava').style.height=(3000+BASE+G.lava*PX)+'px';
+  $('lavaLabel').textContent='🔥 '+Math.max(0,Math.round(G.lava*10)/10)+' m';
+  const me=G.players.find(p=>p.human);
+  const alive=G.players.filter(p=>p.alive);
+  const focusH = me.alive ? me.h : Math.max(G.lava, ...alive.map(p=>p.h), 0);
+  const off=Math.max(0,BASE+Math.max(focusH,G.lava)*PX-H*0.5);
+  world.style.transform=`translateY(${off}px)`;
+  ensureMarkers(Math.max(...G.players.map(p=>p.h),G.lava));
+  $('roundLbl').textContent='Runde '+Math.max(1,G.round);
+  $('aliveLbl').textContent='🧍 '+alive.length+' übrig';
+}
+
+let timers=[], rafId=0;
+function clearTimers(){ timers.forEach(clearTimeout); timers=[]; cancelAnimationFrame(rafId); }
+const later=(fn,ms)=>timers.push(setTimeout(fn,ms));
+function flash(txt,color){ $('flash').innerHTML=`<span style="color:${color||'#fff'}">${txt}</span>`; }
+function bubble(p,html,cls){ p.av.querySelector('.bubble')?.remove(); const b=document.createElement('div'); b.className='bubble'+(cls?' '+cls:''); b.innerHTML=html; p.av.appendChild(b); }
+function updHint(){ const b=$('hintBtn'); b.textContent='💡'+G.hints; const me=G.players.find(p=>p.human);
+  b.disabled = !G.hints || !me.alive || me.answered || me.hinted || G.phase!=='type' || !G.cat || !G.cat.list.some(w=>!G.used.has(fold(w))); }
+
+function startRound(){
+  if(G.over) return;
+  G.round++;
+  let ci; do{ci=Math.floor(Math.random()*G.pool.length)}while(G.pool.length>1&&ci===G.last);
+  G.last=ci; G.cat=G.pool[ci]; G.phase='type';
+  const sp=G.spectate?0.4:1;
+  G.limit=G.time*sp;
+  G.players.forEach(p=>{p.answered=!p.alive; p.pending=null; p.hinted=false; p.av.querySelector('.bubble')?.remove(); if(p.alive) bubble(p,'✍️','wait');});
+  $('question').textContent=G.cat.q+' '+G.cat.i;
+  $('feedback').textContent=''; render();
+  const me=G.players.find(p=>p.human);
+  const inp=$('answer'); inp.value='';
+  if(me.alive){ inp.disabled=false; inp.focus(); } else inp.disabled=true;
+  updHint();
+  const d=DIFF[G.diff];
+  G.players.filter(p=>p.alive&&!p.human).forEach(p=>{
+    if(Math.random()<d.fail+G.round*0.008) return;
+    const t=(d.min+Math.random()*(0.88-d.min))*G.limit*1000;
+    later(()=>botAnswer(p),t);
+  });
+  G.start=performance.now();
+  const tick=()=>{
+    const left=1-(performance.now()-G.start)/(G.limit*1000);
+    $('timer').style.width=Math.max(0,left*100)+'%';
+    if(left<=0 || G.players.every(p=>p.answered)) { reveal(); return; }
+    rafId=requestAnimationFrame(tick);
+  };
+  rafId=requestAnimationFrame(tick);
+}
+
+function botAnswer(p){
+  if(!p.alive||p.answered||G.over||G.phase!=='type') return;
+  let avail=G.cat.list.filter(w=>!G.used.has(fold(w)));
+  let word,key;
+  if(!avail.length){ // eigene Kategorie ohne Wörter: Bot "denkt sich was aus"
+    const n=4+Math.floor(Math.random()*(5+G.diff*3)); word='•'.repeat(n); key='bot'+Math.random();
+    p.pending={word,key,n,half:false};
+  } else {
+    avail.sort((a,b)=>letters(a)-letters(b));
+    const pick=DIFF[G.diff].pick;
+    if(pick==='short') avail=avail.slice(0,Math.ceil(avail.length*0.55));
+    if(pick==='long') avail=avail.slice(Math.floor(avail.length*0.55));
+    word=avail[Math.floor(Math.random()*avail.length)];
+    p.pending={word,key:fold(word),n:letters(word),half:false};
+  }
+  p.answered=true; bubble(p,'✅','wait');
+}
+
+$('hintBtn').addEventListener('click',()=>{
+  const me=G&&G.players.find(p=>p.human);
+  if(!me||!me.alive||me.answered||G.phase!=='type') return;
+  if(!G.hints){ $('feedback').textContent=tr().nohint; return; }
+  const avail=G.cat.list.filter(w=>!G.used.has(fold(w))); if(!avail.length) return;
+  avail.sort((a,b)=>letters(a)-letters(b));
+  const mid=avail.slice(Math.floor(avail.length*0.3),Math.ceil(avail.length*0.8));
+  const w=(mid.length?mid:avail)[Math.floor(Math.random()*(mid.length||avail.length))];
+  G.hints--; me.hinted=true; updHint();
+  const fb=$('feedback'); fb.style.color='var(--lava3)'; fb.textContent=tr().hint(w);
+  $('answer').focus();
+});
+
+$('form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const me=G&&G.players.find(p=>p.human);
+  const inp=$('answer'); const val=inp.value.trim();
+  if(!me||!me.alive||me.answered||!val||G.over||G.phase!=='type') return;
+  const fb=$('feedback');
+  let key;
+  if(G.party||G.cat.free){ key=fold(val); if(key.length<2||!/^[\p{L}\s'-]+$/u.test(val)) return bad(tr().letters); }
+  else { key=matchWord(G.cat,val,G.lang); if(!key) return bad(tr().unknown); }
+  if(G.used.has(key)) return bad(tr().used);
+  const full=letters(val), n=me.hinted?Math.floor(full/2):full;
+  me.pending={word:val.charAt(0).toUpperCase()+val.slice(1),key,n,half:me.hinted};
+  me.answered=true; bubble(me,'✅','wait');
+  inp.disabled=true; updHint();
+  fb.style.color='var(--ok)'; fb.textContent=tr().sent(n);
+  function bad(msg){ fb.style.color='var(--bad)'; fb.textContent=msg; inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake'); inp.select(); }
+});
+
+function reveal(){
+  cancelAnimationFrame(rafId); timers.forEach(clearTimeout); timers=[];
+  G.phase='reveal'; $('answer').disabled=true; $('timer').style.width='0%'; updHint();
+  flash(tr().reveal,'#fff');
+  G.players.filter(p=>p.alive).forEach(p=>{
+    if(p.pending){ const a=p.pending; p.h+=a.n; G.used.add(a.key);
+      bubble(p,`${a.word} <b>+${a.n}</b>${a.half?' <i>💡½</i>':''}`); }
+    else bubble(p,p.human?tr().slow:'😵 …','fail');
+  });
+  later(()=>render(),250);
+  const rise=Math.round((4.5+G.round*1.25)*10)/10;
+  later(()=>{
+    G.lava+=rise; flash(tr().lava(rise),'#ffab40'); render();
+    later(()=>{
+      const before=G.players.filter(p=>p.alive);
+      before.forEach(p=>{ if(p.h<=G.lava){ p.alive=false; p.deathRound=G.round; } });
+      render();
+      const alive=G.players.filter(p=>p.alive);
+      const me=G.players.find(p=>p.human);
+      const died=before.filter(p=>!p.alive);
+      if(alive.length===0){
+        const best=Math.max(...died.map(p=>p.h));
+        died.filter(p=>p.h===best).forEach(p=>{p.alive=true;p.deathRound=0;});
+        render(); return later(gameOver,900);
+      }
+      if(alive.length===1) return later(gameOver,900);
+      if(died.includes(me)){ later(()=>showEnd(false),900); return; }
+      if(died.length) flash(tr().gone(died.map(p=>p.name).join(', ')),'#ff8a80');
+      later(startRound,died.length?1500:800);
+    },1400);
+  },G.spectate?1300:2400);
+}
+
+function ranking(){
+  return [...G.players].sort((a,b)=> (b.alive-a.alive) || ((b.deathRound||999)-(a.deathRound||999)) || (b.h-a.h));
+}
+function showEnd(final){
+  const r=ranking(), me=G.players.find(p=>p.human), pos=r.indexOf(me)+1;
+  const win=final&&me.alive;
+  $('endTitle').textContent= win?'🏆 Du hast gewonnen!': final? '🔥 Spiel vorbei!' : '💀 Ab in die Lava!';
+  const winner=r[0];
+  $('endText').textContent= win?`Als Letzter übrig nach ${G.round} Runden – stark!`
+    : final? `${winner.emoji} ${winner.name} gewinnt nach ${G.round} Runden. Du bist Platz ${pos}.`
+    : `Runde ${G.round} – du hast es auf ${me.h} m geschafft. Noch ${G.players.filter(p=>p.alive).length} Bots kämpfen weiter.`;
+  $('rankList').innerHTML=r.map((p,i)=>`<div class="${p.human?'me':''}"><span class="pos">${final||p.deathRound?i+1:'?'}</span>${p.alive?p.emoji:'💀'} ${p.name}<span class="h">${p.h} m</span></div>`).join('');
+  $('watchBtn').classList.toggle('hidden',final);
+  $('endScreen').classList.remove('hidden');
+  $('againBtn').focus();
+}
+function gameOver(){ G.over=true; G.phase='over'; $('question').textContent=tr().end; showEnd(true); }
+
+$('watchBtn').onclick=()=>{ G.spectate=true; $('endScreen').classList.add('hidden'); later(startRound,300); };
+$('againBtn').onclick=()=>{ $('endScreen').classList.add('hidden'); $('startScreen').classList.remove('hidden'); };
+$('startBtn').onclick=newGame;
+</script>
+</body>
+</html>
