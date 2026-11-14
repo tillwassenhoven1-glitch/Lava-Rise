@@ -85,6 +85,10 @@
   .rank .h{margin-left:auto;color:var(--muted);font-size:13px}
   .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
   #version{position:fixed;left:12px;bottom:10px;font:800 12px 'Nunito',sans-serif;color:#c9a9a0;background:#0008;padding:4px 10px;border-radius:99px;z-index:60}
+  .code{font-family:'Lilita One',cursive;font-size:46px;letter-spacing:8px;color:var(--lava3);text-shadow:0 3px 0 #000a;margin:2px 0 8px;user-select:all}
+  .modeSeg{justify-content:center;margin:2px auto 12px;width:max-content}
+  .modeSeg button{font-size:16px;padding:8px 18px}
+  #lobStart:disabled{opacity:.5}
   .hidden{display:none!important}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
   .chip{font:800 13px 'Nunito';padding:6px 10px;border-radius:99px;background:var(--bg);color:var(--muted);box-shadow:none;border:2px solid var(--rock2)}
@@ -142,17 +146,17 @@
 
 <!-- Start -->
 <div class="overlay" id="startScreen">
-  <div id="version">Version 0.1 · Open Beta</div>
   <div class="card">
     <h1>LAVA-WORT</h1>
     <p>Lange Wörter = hoch klettern. Die Lava kommt! 🌋</p>
+    <div class="seg modeSeg" id="modeSeg"><button type="button" data-m="solo" class="on">🎮 Solo</button><button type="button" data-m="online">🌐 Online</button></div>
     <div class="rules">
       ❓ Eine Frage erscheint, z.&nbsp;B. <b>„Nenne ein Tier!“</b><br>
       ⌨️ Tipp schnell eine passende Antwort<br>
       🧗 Jeder Buchstabe = 1 Meter nach oben<br>
       🔥 Nach jeder Runde steigt die Lava – oben steht, wie viele Buchstaben du brauchst<br>
       🏆 Wer als Letztes übrig bleibt, gewinnt!<br>
-      🚫 Jedes Wort darf nur einmal pro Spiel benutzt werden<br>💡 Max. 3 Tipps – dann zählt die Antwort nur halb<br>👀 Alle Antworten werden erst gezeigt, wenn alle fertig sind
+      🚫 Jedes Wort darf nur einmal pro Spiel benutzt werden<br>💡 Max. 3 Tipps – dann zählt die Antwort nur halb<br>👀 Alle Antworten werden erst gezeigt, wenn alle fertig sind<br>🌐 Online: Raum erstellen und den Code an Freunde schicken
     </div>
     <div class="row">Dein Name <input type="text" id="nameIn" maxlength="12" value="Till"></div>
     <div class="row">Gegner (Bots) <div class="seg" id="botSeg"></div></div>
@@ -167,9 +171,33 @@
     <textarea id="customWords" rows="2" placeholder="Eigene Wörter mit Komma, z. B. Audi, BMW, Mercedes…"></textarea>
     <div id="customInfo"></div>
     <div class="row"><span>Party-Modus<br><span class="small">Jedes Wort zählt – ohne Prüfung (min. 3 Buchstaben)</span></span><input type="checkbox" id="partyIn"></div>
+    <div id="onlineBox" class="hidden">
+      <div class="lbl">🌐 Online spielen</div>
+      <div class="row">Max. Spieler <div class="seg" id="maxSeg"></div></div>
+      <div class="row">Bots im Raum <div class="seg" id="obotSeg"></div></div>
+      <div style="margin-top:10px"><button type="button" id="hostBtn">🏠 Raum erstellen</button></div>
+      <div class="lbl">…oder einem Raum beitreten</div>
+      <div style="display:flex;gap:8px;margin-top:6px"><input class="full" id="codeIn" placeholder="Code, z. B. K7P2Q" maxlength="6" autocapitalize="characters" style="margin:0;text-transform:uppercase;font-size:18px;letter-spacing:2px"><button type="button" id="joinBtn" class="sec">🚪 Beitreten</button></div>
+      <div id="netMsg" class="small" style="margin-top:8px;font-weight:800"></div>
+    </div>
     <div style="margin-top:16px"><button id="startBtn">🔥 Los geht's!</button></div>
     <div id="startErr" class="small" style="color:var(--bad);margin-top:8px;font-weight:800"></div>
     <details><summary>🏆 Highscores</summary><div class="rank" id="hsList"></div><button type="button" class="mini" id="hsReset" style="margin-top:4px">🗑️ Zurücksetzen</button></details>
+    <div id="version" style="position:static;display:inline-block;margin-top:12px">Version 0.2 · Open Beta</div>
+  </div>
+</div>
+
+<!-- Lobby -->
+<div class="overlay hidden" id="lobby">
+  <div class="card">
+    <h2>🌐 Online-Raum</h2>
+    <div class="small">Raum-Code</div>
+    <div class="code" id="lobCode">-----</div>
+    <div class="btns"><button type="button" class="sec" id="copyBtn">📤 Link teilen</button></div>
+    <p id="lobInfo"></p>
+    <div class="rank" id="lobList"></div>
+    <p id="lobWait" class="small"></p>
+    <div class="btns"><button type="button" id="lobStart">🔥 Spiel starten</button><button type="button" class="sec" id="lobLeave">🚪 Verlassen</button></div>
   </div>
 </div>
 
@@ -189,6 +217,7 @@
   </div>
 </div>
 
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 // ---------- Wortlisten (DE / EN) ----------
 const CATS = [
@@ -234,11 +263,22 @@ const fold = s => s.toLowerCase().replace(/ß/g,'ss').normalize('NFD').replace(/
 const letters = s => (s.match(/\p{L}/gu)||[]).length;
 const SUF={de:['innen','nen','en','er','in','n','e','s'],en:['es','s']};
 function makeCat(q,i,words,free){ const list=[...new Set(words.map(w=>w.trim()).filter(Boolean))]; return {q,i,list,free,map:new Map(list.map(x=>[fold(x),x]))}; }
-function matchWord(cat,input,lang){
-  const k=fold(input); if(k.length<2) return null;
+function baseKey(cat,k,lang){
   if(cat.map.has(k)) return k;
   if(lang==='en'&&k.endsWith('ies')){const b=k.slice(0,-3)+'y'; if(cat.map.has(b)) return b;}
   for(const s of SUF[lang]){ if(k.endsWith(s)&&k.length-s.length>=2){const b=k.slice(0,-s.length); if(cat.map.has(b)) return b;} }
+  return null;
+}
+const okPrefix=p=>p.length>=2&&p.length<=16&&(p.length<=4||/[aeiouy]/.test(p))&&!/(.)\1\1/.test(p);
+function matchWord(cat,input,lang){
+  const k=fold(input); if(k.length<2) return null;
+  const d=baseKey(cat,k,lang); if(d) return d;
+  // Zusammengesetzte Wörter: Bau+arbeiter, Riesen+schildkröte, Gemüse+händler …
+  for(let i=2;i<=k.length-3;i++){
+    const pre=k.slice(0,i); if(!okPrefix(pre)) continue;
+    const b=baseKey(cat,k.slice(i),lang);
+    if(b&&b.length>=3&&!pre.includes(b)) return k;
+  }
   return null;
 }
 
@@ -351,27 +391,28 @@ function newGame(){
   const name=($('nameIn').value.trim()||'Du').slice(0,12);
   try{localStorage.setItem('lavaName',name)}catch(e){}
   const lang=S.lang;
-  const pool=CATS.filter(c=>S.cats.has(c.id)).map(c=>makeCat(c[lang].q,c.i,c[lang].w.split(','),false));
+  const pool=CATS.filter(c=>S.cats.has(c.id)).map(c=>Object.assign(makeCat(c[lang].q,c.i,c[lang].w.split(',').concat(((MORE[c.id]||{})[lang]||'').split(',')),false),{id:c.id}));
   if(cName){ const ex=findExtra(cName); const c=makeCat(T[lang].custom(cName),'✨',(ex?ex.words:[]).concat(userWords()),false); c.custom=true;
     pool.push(c); if(pool.length>1) pool.push(c); } // eigene Kategorie kommt doppelt so oft
-  const bots=[...BOTS].sort(()=>Math.random()-.5).slice(0,S.bots);
-  const players=[{name,emoji:'😎',color:'#ff7043',human:true}].concat(bots.map(b=>({name:b[0],emoji:b[1],color:b[2]})));
-  players.forEach(p=>Object.assign(p,{h:0,alive:true,answered:false,deathRound:0,pending:null,bestN:0,bestW:''}));
+  const bots=[...BOTS].sort(()=>Math.random()-.5).slice(0,NET.host?NET.bots:S.bots);
+  const players=[{name,emoji:'😎',color:'#ff7043',human:true,me:true,cid:'host'}].concat(NET.host?NET.clients.map((c,i)=>({name:c.name,emoji:PCOL[(i+1)%PCOL.length][0],color:PCOL[(i+1)%PCOL.length][1],human:true,remote:true,cid:c.id})):[]).concat(bots.map(b=>({name:b[0],emoji:b[1],color:b[2]})));
+  players.forEach(p=>Object.assign(p,{h:0,alive:true,answered:false,deathRound:0,pending:null,bestN:0,bestW:'',hints:3,hinted:false}));
   G={players,round:0,lava:-8,used:new Set(),last:null,pool,lang,party:$('partyIn').checked,spectate:false,over:false,hints:3,time:S.time,diff:S.diff,speed:S.speed,saved:false,phase:'wait'};
+  if(NET.host){ G.online=true; G.gid=NET.gid; clearInterval(NET.iv); NET.iv=setInterval(hostSnap,250); }
   $('need').textContent=''; arena.classList.remove('danger');
   $('answer').placeholder=T[lang].ph;
   $('lanes').innerHTML=''; $('markers').innerHTML='';
   const n=players.length;
   players.forEach((p,i)=>{
-    const lane=document.createElement('div'); lane.className='lane'+(p.human?' me':'');
+    const lane=document.createElement('div'); lane.className='lane'+(p.me?' me':'');
     lane.style.left=(i/n*100)+'%'; lane.style.width=(100/n)+'%';
-    lane.innerHTML=`<div class="pillar" style="background-color:${p.color}"></div><div class="avatar"><div class="face" style="background:${p.color}">${p.emoji}</div><div class="name">${p.human?'⭐ ':''}${p.name}</div></div>`;
+    lane.innerHTML=`<div class="pillar" style="background-color:${p.color}"></div><div class="avatar"><div class="face" style="background:${p.color}">${p.emoji}</div><div class="name">${p.me?'⭐ ':''}${esc(p.name)}</div></div>`;
     $('lanes').appendChild(lane); p.el=lane; p.pillar=lane.querySelector('.pillar'); p.av=lane.querySelector('.avatar');
   });
   const lava=$('lava'); lava.querySelectorAll('.blob').forEach(b=>b.remove());
   for(let i=0;i<14;i++){const b=document.createElement('div');b.className='blob';b.style.left=(Math.random()*100)+'%';
     b.style.animationDelay=(Math.random()*2.2)+'s';const s=6+Math.random()*10;b.style.width=b.style.height=s+'px';lava.appendChild(b);}
-  $('startScreen').classList.add('hidden'); $('endScreen').classList.add('hidden');
+  $('startScreen').classList.add('hidden'); $('endScreen').classList.add('hidden'); $('lobby').classList.add('hidden');
   updHint(); layout(); render();
   [3,2,1].forEach((n,i)=>later(()=>{ flash(n,'#ffd54f'); $('flash').firstChild.id='countdown'; beep(520,.12,'square',.07); },300+i*800));
   later(()=>{ SFX.go(); startRound(); },300+3*800);
@@ -397,7 +438,7 @@ function render(){
   });
   $('lava').style.height=(3000+BASE+G.lava*PX)+'px';
   $('lavaLabel').textContent='🔥 '+Math.max(0,Math.round(G.lava*10)/10)+' m';
-  const me=G.players.find(p=>p.human);
+  const me=ME();
   const alive=G.players.filter(p=>p.alive);
   const focusH = me.alive ? me.h : Math.max(G.lava, ...alive.map(p=>p.h), 0);
   const off=Math.max(0,BASE+Math.max(focusH,G.lava)*PX-H*0.5);
@@ -412,9 +453,10 @@ function render(){
 let timers=[], rafId=0;
 function clearTimers(){ timers.forEach(clearTimeout); timers=[]; cancelAnimationFrame(rafId); }
 const later=(fn,ms)=>timers.push(setTimeout(fn,ms));
-function flash(txt,color){ $('flash').innerHTML=`<span style="color:${color||'#fff'}">${txt}</span>`; }
-function bubble(p,html,cls){ p.av.querySelector('.bubble')?.remove(); const b=document.createElement('div'); b.className='bubble'+(cls?' '+cls:''); b.innerHTML=html; p.av.appendChild(b); }
-function updHint(){ const b=$('hintBtn'); b.textContent='💡'+G.hints; const me=G.players.find(p=>p.human);
+function flash(txt,color){ if(G&&G.online&&NET.host) bcast({t:'flash',txt:String(txt),color}); $('flash').innerHTML=`<span style="color:${color||'#fff'}">${txt}</span>`; }
+function bubble(p,html,cls){ p.bub={h:html,c:cls||''}; p.av.querySelector('.bubble')?.remove(); const b=document.createElement('div'); b.className='bubble'+(cls?' '+cls:''); b.innerHTML=html; p.av.appendChild(b); }
+function updHint(){ const b=$('hintBtn');
+  if(G.client){ const m=ME(); b.textContent='💡'+(m?m.hints:0); b.disabled=!m||!m.hints||!m.alive||m.answered||m.hinted||NET.sent||G.phase!=='type'; return; } b.textContent='💡'+G.hints; const me=ME();
   b.disabled = !G.hints || !me.alive || me.answered || me.hinted || G.phase!=='type' || !G.cat || !G.cat.list.some(w=>!G.used.has(fold(w)));
   b.title = G.hints ? 'Tipp holen – Antwort zählt dann nur halb' : 'Keine Tipps mehr'; }
 
@@ -422,13 +464,13 @@ function startRound(){
   if(G.over) return;
   G.round++;
   const uniq=new Set(G.pool).size; let c; do{ c=G.pool[Math.floor(Math.random()*G.pool.length)]; }while(uniq>1&&c===G.last);
-  G.last=c; G.cat=c; G.phase='type'; G.nextRise=riseFor(G.round); G.lastTick=99;
+  G.last=c; G.cat=varyCat(c); G.phase='type'; G.nextRise=riseFor(G.round); G.lastTick=99;
   const sp=G.spectate?0.4:1;
   G.limit=G.time*sp;
-  G.players.forEach(p=>{p.answered=!p.alive; p.pending=null; p.hinted=false; p.av.querySelector('.bubble')?.remove(); if(p.alive) bubble(p,'✍️','wait');});
+  G.players.forEach(p=>{p.answered=!p.alive; p.pending=null; p.hinted=false; p.bub=null; p.av.querySelector('.bubble')?.remove(); if(p.alive) bubble(p,'✍️','wait');});
   $('question').textContent=G.cat.q+' '+G.cat.i;
   $('feedback').textContent=''; render();
-  const me=G.players.find(p=>p.human);
+  const me=ME();
   const inp=$('answer'); inp.value='';
   if(me.alive){ inp.disabled=false; inp.focus(); } else inp.disabled=true;
   updHint(); updNeed();
@@ -442,7 +484,7 @@ function startRound(){
   const tick=()=>{
     const left=1-(performance.now()-G.start)/(G.limit*1000);
     $('timer').style.width=Math.max(0,left*100)+'%';
-    const sec=Math.ceil(left*G.limit); if(sec<=3&&sec>0&&sec<G.lastTick&&!G.players.find(p=>p.human).answered&&G.players.find(p=>p.human).alive){ G.lastTick=sec; SFX.tick(); }
+    const sec=Math.ceil(left*G.limit); if(sec<=3&&sec>0&&sec<G.lastTick&&!ME().answered&&ME().alive){ G.lastTick=sec; SFX.tick(); }
     if(left<=0 || G.players.every(p=>p.answered)) { reveal(); return; }
     rafId=requestAnimationFrame(tick);
   };
@@ -450,7 +492,7 @@ function startRound(){
 }
 
 function updNeed(){
-  const me=G.players.find(p=>p.human), el=$('need');
+  const me=ME(), el=$('need');
   if(!me.alive||G.phase!=='type'){ el.textContent=''; arena.classList.remove('danger'); return; }
   const need=Math.max(0,Math.floor(G.lava+G.nextRise-me.h)+1);
   el.className=need>=7?'warn':'';
@@ -477,7 +519,8 @@ function botAnswer(p){
 }
 
 $('hintBtn').addEventListener('click',()=>{
-  const me=G&&G.players.find(p=>p.human);
+  if(G&&G.client){ const m=ME(); if(m&&m.alive&&!NET.sent&&!m.hinted&&G.phase==='type') send(NET.conn,{t:'hint'}); return; }
+  const me=G&&ME();
   if(!me||!me.alive||me.answered||G.phase!=='type') return;
   if(!G.hints){ $('feedback').textContent=tr().nohint; return; }
   const avail=G.cat.list.filter(w=>!G.used.has(fold(w))); if(!avail.length) return;
@@ -491,7 +534,8 @@ $('hintBtn').addEventListener('click',()=>{
 
 $('form').addEventListener('submit',e=>{
   e.preventDefault();
-  const me=G&&G.players.find(p=>p.human);
+  if(G&&G.client){ const v=$('answer').value.trim(), m=ME(); if(!v||!m||!m.alive||NET.sent||G.phase!=='type') return; send(NET.conn,{t:'ans',val:v}); $('answer').disabled=true; return; }
+  const me=G&&ME();
   const inp=$('answer'); const val=inp.value.trim();
   if(!me||!me.alive||me.answered||!val||G.over||G.phase!=='type') return;
   const fb=$('feedback');
@@ -526,7 +570,7 @@ function reveal(){
       before.forEach(p=>{ if(p.h<=G.lava){ p.alive=false; p.deathRound=G.round; } });
       render();
       const alive=G.players.filter(p=>p.alive);
-      const me=G.players.find(p=>p.human);
+      const me=ME();
       const died=before.filter(p=>!p.alive);
       if(died.length) SFX.die();
       if(alive.length===0){
@@ -535,8 +579,8 @@ function reveal(){
         render(); return later(gameOver,900);
       }
       if(alive.length===1) return later(gameOver,900);
-      if(died.includes(me)){ later(()=>showEnd(false),900); return; }
-      if(died.length) flash(tr().gone(died.map(p=>p.name).join(', ')),'#ff8a80');
+      if(died.includes(me)&&!G.online){ later(()=>showEnd(false),900); return; }
+      if(died.length) flash(tr().gone(died.map(p=>esc(p.name)).join(', ')),'#ff8a80');
       later(startRound,died.length?1500:800);
     },1400);
   },G.spectate?1300:2400);
@@ -546,7 +590,7 @@ function ranking(){
   return [...G.players].sort((a,b)=> (b.alive-a.alive) || ((b.deathRound||999)-(a.deathRound||999)) || (b.h-a.h));
 }
 function saveScore(win){
-  const me=G.players.find(p=>p.human);
+  const me=ME();
   if(G.saved){ return G.hsIdx; } G.saved=true;
   const e={n:me.name,m:me.h,r:me.deathRound||G.round,w:win,d:G.diff,s:G.speed,t:Date.now()};
   const list=loadHS(); list.push(e); list.sort((a,b)=>b.m-a.m||b.r-a.r||a.t-b.t);
@@ -554,7 +598,7 @@ function saveScore(win){
   G.hsIdx=top.indexOf(e); return G.hsIdx;
 }
 function showEnd(final){
-  const r=ranking(), me=G.players.find(p=>p.human), pos=r.indexOf(me)+1;
+  const r=ranking(), me=ME(), pos=r.indexOf(me)+1;
   const win=final&&me.alive;
   const idx=saveScore(win);
   $('newRec').textContent= idx===0&&me.h>0 ? tr().rec : idx>0 ? `⭐ Platz ${idx+1} in deiner Bestenliste!` : '';
@@ -566,15 +610,327 @@ function showEnd(final){
     : final? `${winner.emoji} ${winner.name} gewinnt nach ${G.round} Runden. Du bist Platz ${pos}.`
     : `Runde ${G.round} – du hast es auf ${me.h} m geschafft. Noch ${G.players.filter(p=>p.alive).length} Bots kämpfen weiter.`;
   if(me.bestW) $('endText').textContent+=` Bestes Wort: ${me.bestW} (+${me.bestN}).`;
-  $('rankList').innerHTML=r.map((p,i)=>`<div class="${p.human?'me':''}"><span class="pos">${final||p.deathRound?i+1:'?'}</span>${p.alive?p.emoji:'💀'} ${esc(p.name)}<span class="h">${p.h} m</span></div>`).join('');
+  $('rankList').innerHTML=r.map((p,i)=>`<div class="${p.me?'me':''}"><span class="pos">${final||p.deathRound?i+1:'?'}</span>${p.alive?p.emoji:'💀'} ${esc(p.name)}<span class="h">${p.h} m</span></div>`).join('');
   $('watchBtn').classList.toggle('hidden',final);
   $('endScreen').classList.remove('hidden');
   $('againBtn').focus();
 }
-function gameOver(){ G.over=true; G.phase='over'; $('question').textContent=tr().end; showEnd(true); }
+function gameOver(){ G.over=true; G.phase='over'; $('question').textContent=tr().end; if(G.online) hostEnd(); showEnd(true); }
 
 $('watchBtn').onclick=()=>{ G.spectate=true; $('endScreen').classList.add('hidden'); later(startRound,300); };
-$('againBtn').onclick=()=>{ clearTimers(); $('endScreen').classList.add('hidden'); $('startScreen').classList.remove('hidden'); showHS(); customInfo(); };
+$('againBtn').onclick=()=>{ clearTimers(); $('endScreen').classList.add('hidden'); if(NET.host||NET.client){ showLobby(); return; } $('startScreen').classList.remove('hidden'); showHS(); customInfo(); };
+// ---------- Mehr Wörter (werden zu den eingebauten Listen dazugenommen) ----------
+const MORE={
+ beruf:{de:'Bauarbeiter,Arbeiter,Handwerker,Azubi,Auszubildender,Lehrling,Praktikant,Aushilfe,Helfer,Meister,Händler,Techniker,Berater,Leiter,Macher,Führer,Fachmann,Fachkraft,Kauffrau,Angestellter,Beamter,Assistent,Experte,Spezialist,Therapeut,Monteur,Reiniger,Planer,Prüfer,Kontrolleur,Inspektor,Kurier,Bote,Vertreter,Kranführer,Kranfahrer,Baggerfahrer,Gabelstaplerfahrer,Fliesenleger,Bodenleger,Parkettleger,Gerüstbauer,Zimmermann,Zimmerer,Glaser,Schlosser,Schweißer,Metallbauer,Industriemechaniker,Anlagenmechaniker,Heizungsinstallateur,Steinmetz,Straßenbauer,Müllmann,Straßenreiniger,Gebäudereiniger,Fensterputzer,Kaminkehrer,Landschaftsgärtner,Melker,Schäfer,Jäger,Polsterer,Raumausstatter,Tapezierer,Lackierer,Karosseriebauer,Fahrradmechaniker,Bürokaufmann,Verwaltungsangestellter,Bankangestellter,Versicherungsvertreter,Makler,Immobilienmakler,Unternehmer,Chef,Geschäftsführer,Abteilungsleiter,Polizeibeamter,Kommissar,Staatsanwalt,Zollbeamter,Rettungssanitäter,Notfallsanitäter,Rettungsschwimmer,Bademeister,Professor,Dozent,Schulleiter,Rektor,Hausarzt,Krankenschwester,Altenpfleger,Pflegekraft,Arzthelfer,Laborant,Heilpraktiker,Psychotherapeut,Logopäde,Ergotherapeut,Masseur,Nageldesigner,Tätowierer,Fitnesstrainer,Lagerarbeiter,Paketbote,Zusteller,Lieferfahrer,Pizzalieferant,Barista,Hotelfachmann,Rezeptionist,Küchenhilfe,Redakteur,Nachrichtensprecher,Komiker,Comedian,Rapper,DJ,Produzent,Komponist,Dirigent,Pianist,Gitarrist,Schlagzeuger,Bildhauer,Grafiker,Illustrator,Webdesigner,Spieleentwickler,Entwickler,Systemadministrator,Fluglotse,Schaffner,Zugbegleiter,Berufskraftfahrer,Fahrlehrer,Skilehrer,Tanzlehrer,Bergführer,Reiseleiter,Stewart,Hundetrainer,Pferdewirt,Schmied,Uhrmacher,Juwelier,Hörgeräteakustiker,Augenoptiker,Bestatter,Totengräber,Nonne,Mönch,Anwältin,Wirtschaftsprüfer,Banker,Börsenmakler,Investor,Geologe,Astronom,Botaniker,Zoologe,Bauingenieur,Maschinenbauer,Bauleiter,Polier,Vorarbeiter,Tankwart,Autoverkäufer,Sportler,Athlet,Rennfahrer,Jockey,Torwart,Sportlehrer,Tagesmutter,Babysitter,Nanny,Hausmann,Hausfrau,Putzfrau,Brauer,Müller,Chocolatier,Wirt,Gastwirt,Hotelier,Wachmann,Sicherheitsmann,Spion,Agent,Diplomat,Botschafter,Minister,Kanzler,Präsident,Abgeordneter,Offizier,General,Sozialpädagoge,Kindergärtner,Nachhilfelehrer,Gamer,Esports-Profi,Tiktoker,Content Creator,Kassierer,Verkäufer,Einzelhandelskaufmann,Industriekaufmann,Mediengestalter,Kameramann,Synchronsprecher,Stuntman,Feuerwehrmann',
+   en:'worker,construction worker,builder,laborer,welder,miner,mechanic,technician,electrician,plumber,carpenter,cleaner,janitor,housekeeper,nanny,babysitter,professor,lecturer,principal,tutor,coder,web developer,game developer,data scientist,analyst,consultant,manager,boss,ceo,clerk,officer,police officer,cop,sheriff,detective,guard,spy,agent,soldier,general,firefighter,fireman,paramedic,lifeguard,surgeon,therapist,dentist,optician,pharmacist,scientist,inventor,astronomer,geologist,zoologist,botanist,hunter,fisherman,farmer,rancher,cowboy,shepherd,gardener,florist,baker,butcher,chef,cook,waiter,barista,bartender,cashier,shopkeeper,salesman,saleswoman,dealer,broker,banker,accountant,lawyer,judge,politician,senator,diplomat,ambassador,minister,king,queen,pilot,captain,sailor,driver,courier,mailman,postman,delivery driver,trucker,mechanic,plumber,singer,rapper,dj,drummer,guitarist,pianist,composer,conductor,painter,sculptor,illustrator,animator,photographer,journalist,editor,author,poet,actor,comedian,stuntman,model,athlete,coach,referee,jockey,racer,gamer,streamer,youtuber'},
+ tiere:{de:'Kater,Stier,Bulle,Ochse,Hengst,Stute,Sau,Eber,Seekuh,Narwal,Beluga,Kugelfisch,Clownfisch,Piranha,Barrakuda,Schwertfisch,Wels,Zander,Sardine,Makrele,Kabeljau,Dorsch,Scholle,Seeigel,Koralle,Seeanemone,Languste,Krebs,Flusskrebs,Assel,Zecke,Floh,Laus,Milbe,Motte,Glühwürmchen,Gottesanbeterin,Stabheuschrecke,Zikade,Termite,Blattlaus,Vogel,Kuckuck,Rotkehlchen,Fink,Buchfink,Stieglitz,Star,Drossel,Lerche,Schwalbe,Eisvogel,Wiedehopf,Fasan,Rebhuhn,Wachtel,Auerhahn,Kormoran,Albatros,Kondor,Milan,Sperber,Kauz,Schleiereule,Dohle,Eichelhäher,Nandu,Kasuar,Ara,Nymphensittich,Kanarienvogel,Pute,Degu,Rennmaus,Wühlmaus,Spitzmaus,Opossum,Beutelratte,Tasmanischer Teufel,Erdferkel,Warzenschwein,Nasenbär,Roter Panda,Schneeleopard,Ozelot,Karakal,Serval,Löwin,Tigerin,Mammut,Dinosaurier,Saurier,T-Rex,Säbelzahntiger,Pinguin,Kaiserpinguin,Seehund,Robbe,Walross,Wildkatze,Hauskatze,Stachelschwein,Hirschkäfer,Maikäfer,Borkenkäfer,Kreuzspinne,Vogelspinne,Witwe,Seeschlange,Anakonda,Boa,Viper,Kreuzotter,Ringelnatter,Natter,Blindschleiche,Mamba,Schildkröte,Krokodil,Kaulquappe,Lurch,Molch,Qualle,Tier'},
+ obst:{de:'Blutorange,Pomelo,Sharonfrucht,Jackfrucht,Durian,Rambutan,Kaktusfeige,Hagebutte,Sanddorn,Aronia,Goji,Walnuss,Haselnuss,Mandel,Cashew,Pistazie,Erdnuss,Marone,Esskastanie,Paranuss,Macadamia,Bärlauch,Kresse,Petersilie,Basilikum,Schnittlauch,Dill,Minze,Feldsalat,Römersalat,Endivie,Radicchio,Pak Choi,Chinakohl,Spitzkohl,Romanesco,Butternut,Hokkaido,Zuckerschote,Kaiserschote,Cherrytomate,Rispentomate,Salatgurke,Gewürzgurke,Essiggurke,Maiskolben,Speiserübe,Meerrettich,Wasabi,Yamswurzel,Maniok,Kochbanane,Edamame,Sojabohne,Kidneybohne,Bohnen,Erbsen,Linsen,Obst,Gemüse,Frucht,Beere,Nuss,Kohl,Rübe,Zwiebel,Paprika'},
+ sport:{de:'Hallenfußball,Futsal,Fußballtennis,Streetball,Bogenschießen,Sportschießen,Kanufahren,Kajakfahren,Rafting,Canyoning,Tauchsport,Freitauchen,Schnorcheln,Wellenreiten,Bodyboarden,Stand-up-Paddeln,SUP,Drachenbootrennen,Inline-Hockey,Unihockey,Floorball,Ringtennis,Federball,Padel,Pickleball,Beachsoccer,Rollkunstlauf,Skilanglauf,Ski Alpin,Freestyle-Ski,Snowkiten,Eisklettern,Slackline,Calisthenics,Krafttraining,Ausdauertraining,Spinning,Zumba,Aerobic,Rope Skipping,Seilspringen,Kunstturnen,Trampolin,Akrobatik,Cheerleading,Breakdance,Hip-Hop,Standardtanz,Wrestling,MMA,Kung Fu,Kampfkunst,Aikido,Jiu-Jitsu,Capoeira,Sumo,Rudern,Triathlon,Duathlon,Ultramarathon,Halbmarathon,Crosslauf,Orientierungslauf,Nordic Walking,Walking,Speedskating,Kegeln,Boule,Boccia,Petanque,Golf,Discgolf,Fingerboarden,Scooter,Stuntscooter,E-Sport,Esport,Motorradrennen,Formel 1,Rallye,Segelfliegen,Drachenfliegen,Ballonfahren,Reitsport,Voltigieren,Rodeo,Sportklettern,Schlittschuhlaufen,Hockey,Sport'},
+ koerper:{de:'Ohrmuschel,Nasenspitze,Nasenflügel,Mundwinkel,Oberlippe,Unterlippe,Backenzahn,Schneidezahn,Eckzahn,Weisheitszahn,Zahnfleisch,Halswirbel,Wirbel,Bandscheibe,Becken,Steißbein,Brustbein,Schulterblatt,Rippenbogen,Lendenwirbel,Oberkörper,Unterkörper,Rumpf,Taille,Bauchmuskel,Sixpack,Wadenmuskel,Oberschenkelmuskel,Achillessehne,Meniskus,Kreuzband,Gelenk,Hüftgelenk,Kniegelenk,Schultergelenk,Fingerkuppe,Fingerspitze,Kleiner Finger,Zehennagel,Fußrücken,Fußballen,Spann,Handballen,Nervensystem,Nerv,Rückenmark,Lymphknoten,Schilddrüse,Prostata,Gebärmutter,Eierstock,Hoden,Dünndarm,Dickdarm,Enddarm,Gallenblase,Harnblase,Lippen,Zähne,Haare,Augen,Ohren,Beine,Arme,Hände,Füße,Finger,Knochen,Muskeln,Adern,Organ,Skelett,Glied,Körper'},
+ kueche:{de:'Gabel,Messer,Löffel,Schöpflöffel,Suppenkelle,Kuchenheber,Tortenheber,Pizzaschneider,Eisportionierer,Zitronenpresse,Salatschleuder,Gemüsehobel,Hobel,Spiralschneider,Fleischklopfer,Fleischwolf,Wiegemesser,Schälmesser,Kochmesser,Messerblock,Wetzstahl,Pfannendeckel,Deckel,Topfdeckel,Bräter,Kasserolle,Dampfgarer,Slow Cooker,Waffeleisen,Sandwichmaker,Kontaktgrill,Raclettegrill,Fonduetopf,Milchaufschäumer,Espressokocher,Kapselmaschine,Vollautomat,Wasserfilter,Mülltrennung,Gefrierbeutel,Brotdose,Lunchbox,Trinkflasche,Strohhalm,Glasschale,Auflaufschale,Kuchenform,Gugelhupfform,Ausstechform,Spritzbeutel,Backpinsel,Teigrolle,Rührschüssel,Handmixer,Standmixer,Rührgerät,Herdplatte,Ceranfeld,Induktionsherd,Gasherd,Spülschwamm,Spülbürste,Abtropfgestell,Küchenschrank,Hängeschrank,Schublade,Arbeitsplatte,Küchentisch,Hocker,Küchenuhr,Gewürz,Salz,Pfeffer,Zucker,Mehl,Öl,Essig,Tasse,Teller,Glas,Schüssel,Pfanne,Topf'},
+ kleidung:{de:'Hemden,Hosen,Socken,Schuhe,Stiefeletten,Pumps,High Heels,Ballerina,Mokassin,Clogs,Crocs,Plateauschuhe,Sportschuh,Laufschuh,Hallenschuh,Stollenschuh,Skischuh,Skihose,Skijacke,Schneeanzug,Fleecejacke,Softshelljacke,Steppjacke,Jeansjacke,Bomberjacke,Collegejacke,Trenchcoat,Lodenmantel,Pelzmantel,Umhang,Cape,Kapuze,Kapuzenjacke,Rollkragen,Unterwäsche,Slip,Tanga,Boxershort,Badeshorts,Neoprenanzug,Taucheranzug,Arbeitskleidung,Arbeitshose,Blaumann,Kittel,Arztkittel,Schürze,Uniformjacke,Krawattennadel,Manschettenknöpfe,Hosenträger,Sonnenbrille,Brille,Kette,Armband,Ring,Ohrring,Uhr,Armbanduhr,Tasche,Rucksack,Handtasche,Kappe,Basecap,Bucket Hat,Schiebermütze,Baskenmütze,Sturmhaube,Balaclava,Pulswärmer,Beinstulpen,Stulpen,Nachthemd,Morgenmantel,Kostüm,Faschingskostüm,Trachtenjacke,Sari,Kilt,Toga,Robe,Talar,Bodysuit,Body,Jumpsuit,Kleidung'},
+ instrument:{de:'E-Bass,Kontrabass,Bassgitarre,Westerngitarre,Gitarre,Klavier,E-Piano,Digitalpiano,Stagepiano,Keyboard,Drumcomputer,Drumpad,Sampler,Launchpad,Turntable,Plattenspieler,Mischpult,Loopstation,Vocoder,Cajón,Conga,Timbales,Snare,Snaredrum,Bassdrum,Hi-Hat,Tom,Tomtom,Crash,Ride,Cowbell,Schellenkranz,Maracas,Rassel,Shaker,Klangschale,Gong,Röhrenglocken,Celesta,Vibraphon,Sopransaxophon,Baritonsaxophon,Altflöte,Bassklarinette,Englischhorn,Kontrafagott,Kornett,Euphonium,Tenorhorn,Baritonhorn,Sousaphon,Alphorn,Jagdhorn,Fanfare,Signalhorn,Ziehharmonika,Schifferklavier,Concertina,Harmonium,Spinett,Clavichord,Hammondorgel,Drehleier,Nyckelharpa,Erhu,Koto,Shamisen,Oud,Bouzouki,Charango,Kantele,Stimme,Instrument'}
+};
+// ---------- Fragen-Varianten (z. B. „Nenne eine Ballsportart!“) ----------
+const VAR={
+ sport:[
+  {de:{q:'Nenne eine Ballsportart!',w:'Fußball,Basketball,Handball,Volleyball,Beachvolleyball,Tennis,Tischtennis,Squash,Golf,Minigolf,Hockey,Feldhockey,Rugby,Football,American Football,Baseball,Softball,Cricket,Wasserball,Bowling,Kegeln,Billard,Snooker,Polo,Lacrosse,Völkerball,Faustball,Futsal,Hallenfußball,Streetball,Beachsoccer,Padel,Pickleball,Boccia,Boule,Petanque,Netball,Korbball,Prellball,Brennball,Fußballtennis,Kickball,Dodgeball,Sitzball,Tchoukball,Sepak Takraw,Unihockey,Floorball,Rollhockey,Squash'},
+   en:{q:'Name a ball sport!',w:'football,soccer,basketball,handball,volleyball,beach volleyball,tennis,table tennis,ping pong,squash,golf,mini golf,hockey,field hockey,rugby,american football,baseball,softball,cricket,water polo,bowling,billiards,pool,snooker,polo,lacrosse,dodgeball,netball,futsal,padel,pickleball,bocce,kickball,floorball'}},
+  {de:{q:'Nenne eine Sportart im Wasser!',w:'Schwimmen,Tauchen,Surfen,Windsurfen,Kitesurfen,Segeln,Rudern,Kanu,Kanufahren,Kajak,Kajakfahren,Wasserball,Turmspringen,Wasserspringen,Kunstspringen,Synchronschwimmen,Wakeboarden,Wasserski,Stand-up-Paddling,SUP,Rafting,Schnorcheln,Freitauchen,Apnoetauchen,Bodyboarden,Wellenreiten,Drachenbootrennen,Unterwasserrugby,Aquajogging,Aquafitness,Triathlon,Angeln,Jetski,Motorbootrennen,Canyoning,Tauchsport,Rettungsschwimmen,Flossenschwimmen,Brustschwimmen,Kraulen,Rückenschwimmen,Delfinschwimmen'},
+   en:{q:'Name a water sport!',w:'swimming,diving,surfing,windsurfing,kitesurfing,sailing,rowing,canoeing,kayaking,water polo,water skiing,wakeboarding,paddleboarding,rafting,snorkeling,bodyboarding,synchronized swimming,triathlon,fishing,jet skiing,freediving,scuba diving'}},
+  {de:{q:'Nenne eine Wintersportart!',w:'Skifahren,Ski Alpin,Snowboarden,Skispringen,Langlauf,Skilanglauf,Biathlon,Rodeln,Bobfahren,Skeleton,Eishockey,Eislaufen,Eiskunstlauf,Eisschnelllauf,Schlittschuhlaufen,Curling,Eisklettern,Schneeschuhwandern,Freestyle-Ski,Skicross,Snowkiten,Nordische Kombination,Skibergsteigen,Skitouren,Schlittenfahren,Hundeschlittenrennen,Eisstockschießen,Eisangeln,Eisspeedway,Snowboardcross,Buckelpiste,Rennrodeln'},
+   en:{q:'Name a winter sport!',w:'skiing,snowboarding,ski jumping,cross country skiing,biathlon,sledding,bobsleigh,skeleton,luge,ice hockey,ice skating,figure skating,speed skating,curling,ice climbing,snowshoeing'}},
+  {de:{q:'Nenne eine Sportart, die man zu zweit (1 gegen 1) spielt!',w:'Tennis,Tischtennis,Badminton,Federball,Squash,Padel,Schach,Boxen,Kickboxen,Thaiboxen,Fechten,Ringen,Judo,Karate,Taekwondo,Sumo,Sumoringen,Wrestling,MMA,Kung Fu,Jiu-Jitsu,Aikido,Billard,Snooker,Darts,Beachvolleyball,Pickleball,Ringtennis,Armdrücken,Tischkicker,Kickern,Airhockey,Speed Badminton,Kampfsport,Kampfkunst,Capoeira,Dame,Mühle,Tischfußball'},
+   en:{q:'Name a sport played one against one!',w:'tennis,table tennis,ping pong,badminton,squash,padel,chess,boxing,kickboxing,fencing,wrestling,judo,karate,taekwondo,sumo,mma,billiards,snooker,darts,beach volleyball,pickleball,arm wrestling,air hockey,checkers'}},
+  {de:{q:'Nenne eine Teamsportart!',w:'Fußball,Basketball,Handball,Volleyball,Hockey,Eishockey,Feldhockey,Rugby,Football,American Football,Baseball,Cricket,Wasserball,Polo,Lacrosse,Völkerball,Faustball,Futsal,Rudern,Staffellauf,Curling,Unihockey,Floorball,Korbball,Netball,Softball,Ultimate Frisbee,Drachenbootrennen,Synchronschwimmen,Cheerleading,Bobfahren,Tauziehen,Rollhockey,Inline-Hockey,Unterwasserrugby,Kabaddi,Hurling,Prellball,Brennball,E-Sport,Beachsoccer,Hallenfußball,Beachvolleyball'},
+   en:{q:'Name a team sport!',w:'football,soccer,basketball,handball,volleyball,hockey,ice hockey,rugby,american football,baseball,cricket,water polo,polo,lacrosse,rowing,curling,netball,softball,ultimate frisbee,cheerleading,dodgeball,relay'}}
+ ],
+ tiere:[
+  {de:{q:'Nenne ein Tier, das fliegen kann!',w:'Vogel,Adler,Falke,Habicht,Bussard,Geier,Eule,Uhu,Kauz,Rabe,Krähe,Elster,Taube,Spatz,Amsel,Meise,Kohlmeise,Blaumeise,Specht,Papagei,Wellensittich,Kakadu,Flamingo,Storch,Reiher,Kranich,Schwan,Möwe,Pelikan,Kolibri,Tukan,Ente,Gans,Fledermaus,Flughund,Schmetterling,Biene,Hummel,Wespe,Hornisse,Libelle,Fliege,Mücke,Stechmücke,Schnake,Marienkäfer,Maikäfer,Motte,Glühwürmchen,Kuckuck,Rotkehlchen,Fink,Buchfink,Zaunkönig,Star,Schwalbe,Lerche,Drossel,Eisvogel,Albatros,Kondor,Milan,Sperber,Kormoran,Fasan,Rebhuhn,Wachtel,Dohle,Ara,Kanarienvogel,Nymphensittich,Lori,Seeadler,Steinadler,Wanderfalke,Schleiereule,Zikade,Heuschrecke,Bremse,Wiedehopf,Graureiher,Weißstorch,Fliegender Fisch,Gleithörnchen'},
+   en:{q:'Name an animal that can fly!',w:'bird,eagle,falcon,hawk,buzzard,vulture,owl,raven,crow,magpie,pigeon,dove,sparrow,blackbird,woodpecker,parrot,budgie,cockatoo,flamingo,stork,heron,crane,swan,seagull,pelican,hummingbird,toucan,duck,goose,bat,butterfly,bee,bumblebee,wasp,hornet,dragonfly,fly,mosquito,ladybug,moth,firefly,robin,finch,swallow,albatross,condor,kite,cuckoo,kingfisher,macaw,canary'}},
+  {de:{q:'Nenne ein Tier, das im Wasser lebt!',w:'Fisch,Goldfisch,Karpfen,Forelle,Lachs,Hering,Thunfisch,Aal,Hecht,Barsch,Hai,Weißer Hai,Hammerhai,Walhai,Rochen,Wal,Blauwal,Pottwal,Buckelwal,Orca,Schwertwal,Delfin,Narwal,Beluga,Robbe,Seehund,Walross,Seelöwe,Seekuh,Qualle,Krake,Oktopus,Tintenfisch,Seestern,Seepferdchen,Seeigel,Koralle,Seeanemone,Krabbe,Hummer,Languste,Garnele,Krebs,Flusskrebs,Muschel,Auster,Clownfisch,Kugelfisch,Piranha,Barrakuda,Schwertfisch,Wels,Zander,Sardine,Makrele,Kabeljau,Dorsch,Scholle,Zitteraal,Otter,Fischotter,Biber,Frosch,Kaulquappe,Krokodil,Alligator,Schildkröte,Meeresschildkröte,Axolotl,Molch,Pinguin,Nilpferd,Flusspferd,Seeschlange,Anakonda,Seegurke,Krill,Stör,Rotbarsch,Seeteufel,Mondfisch,Muräne,Koi,Guppy,Neonfisch'},
+   en:{q:'Name an animal that lives in water!',w:'fish,goldfish,carp,trout,salmon,herring,tuna,eel,pike,shark,stingray,whale,blue whale,orca,dolphin,narwhal,beluga,seal,walrus,sea lion,manatee,jellyfish,octopus,squid,starfish,seahorse,sea urchin,coral,crab,lobster,shrimp,mussel,oyster,clownfish,pufferfish,piranha,swordfish,catfish,otter,beaver,frog,tadpole,crocodile,alligator,turtle,axolotl,penguin,hippo'}},
+  {de:{q:'Nenne ein Haustier!',w:'Hund,Katze,Kater,Hamster,Meerschweinchen,Kaninchen,Hase,Maus,Ratte,Rennmaus,Degu,Chinchilla,Frettchen,Wellensittich,Kanarienvogel,Nymphensittich,Papagei,Kakadu,Goldfisch,Fisch,Schildkröte,Landschildkröte,Wasserschildkröte,Pferd,Pony,Esel,Huhn,Ente,Ziege,Schaf,Schwein,Minischwein,Hängebauchschwein,Axolotl,Gecko,Bartagame,Leguan,Chamäleon,Schlange,Kornnatter,Python,Vogelspinne,Stabheuschrecke,Zwergkaninchen,Zwerghamster,Goldhamster,Welpe,Kätzchen,Alpaka,Lama,Taube,Brieftaube,Guppy,Neonfisch,Kampffisch,Koi,Dackel,Pudel,Labrador,Mops,Chihuahua,Schäferhund,Husky,Golden Retriever'},
+   en:{q:'Name a pet!',w:'dog,cat,hamster,guinea pig,rabbit,mouse,rat,gerbil,chinchilla,ferret,budgie,canary,parrot,cockatoo,goldfish,fish,turtle,tortoise,horse,pony,donkey,chicken,duck,goat,pig,gecko,bearded dragon,iguana,snake,python,tarantula,puppy,kitten,alpaca,llama,guppy,koi'}},
+  {de:{q:'Nenne ein Insekt oder Krabbeltier!',w:'Ameise,Biene,Hummel,Wespe,Hornisse,Käfer,Marienkäfer,Maikäfer,Hirschkäfer,Borkenkäfer,Mistkäfer,Libelle,Heuschrecke,Grille,Zikade,Fliege,Stubenfliege,Mücke,Stechmücke,Schnake,Schmetterling,Motte,Raupe,Glühwürmchen,Gottesanbeterin,Stabheuschrecke,Kakerlake,Schabe,Termite,Floh,Laus,Blattlaus,Wanze,Ohrwurm,Silberfischchen,Spinne,Kreuzspinne,Vogelspinne,Weberknecht,Zecke,Milbe,Skorpion,Tausendfüßler,Hundertfüßer,Assel,Kellerassel,Regenwurm,Wurm,Schnecke,Nacktschnecke,Bremse,Wasserläufer,Feuerwanze,Kartoffelkäfer,Rosenkäfer,Junikäfer,Wespenspinne,Schwarze Witwe'},
+   en:{q:'Name an insect or creepy-crawly!',w:'ant,bee,bumblebee,wasp,hornet,beetle,ladybug,ladybird,stag beetle,dragonfly,grasshopper,cricket,cicada,fly,housefly,mosquito,butterfly,moth,caterpillar,firefly,praying mantis,stick insect,cockroach,termite,flea,louse,aphid,bug,earwig,silverfish,spider,tarantula,tick,mite,scorpion,centipede,millipede,woodlouse,earthworm,worm,snail,slug'}},
+  {de:{q:'Nenne ein Tier aus Afrika!',w:'Löwe,Elefant,Giraffe,Zebra,Nashorn,Nilpferd,Flusspferd,Gepard,Leopard,Hyäne,Schakal,Gnu,Antilope,Gazelle,Büffel,Kaffernbüffel,Gorilla,Schimpanse,Pavian,Erdmännchen,Warzenschwein,Strauß,Krokodil,Nilkrokodil,Okapi,Erdferkel,Lemur,Kobra,Mamba,Schwarze Mamba,Python,Chamäleon,Flamingo,Geier,Marabu,Pelikan,Dromedar,Kamel,Wildhund,Afrikanischer Wildhund,Serval,Karakal,Springbock,Impala,Kudu,Oryx,Elenantilope,Mandrill,Klippschliefer,Stachelschwein,Mungo,Fennek,Wüstenfuchs,Skorpion,Brillenpinguin'},
+   en:{q:'Name an animal from Africa!',w:'lion,elephant,giraffe,zebra,rhino,rhinoceros,hippo,hippopotamus,cheetah,leopard,hyena,jackal,wildebeest,gnu,antelope,gazelle,buffalo,gorilla,chimpanzee,baboon,meerkat,warthog,ostrich,crocodile,okapi,aardvark,lemur,cobra,mamba,python,chameleon,flamingo,vulture,camel,serval,caracal,impala,kudu,oryx,mandrill,fennec'}}
+ ],
+ obst:[
+  {de:{q:'Nenne eine Obstsorte!',w:'Apfel,Birne,Banane,Orange,Mandarine,Clementine,Zitrone,Limette,Grapefruit,Pomelo,Kiwi,Mango,Ananas,Papaya,Melone,Wassermelone,Honigmelone,Erdbeere,Himbeere,Brombeere,Heidelbeere,Blaubeere,Johannisbeere,Stachelbeere,Kirsche,Pflaume,Zwetschge,Mirabelle,Pfirsich,Nektarine,Aprikose,Traube,Weintraube,Feige,Dattel,Granatapfel,Maracuja,Litschi,Kokosnuss,Avocado,Quitte,Cranberry,Holunder,Physalis,Kaki,Sharonfrucht,Drachenfrucht,Sternfrucht,Blutorange,Jackfrucht,Durian,Rambutan,Kaktusfeige,Hagebutte,Sanddorn,Guave,Kumquat,Maulbeere,Preiselbeere'},
+   en:{q:'Name a fruit!',w:'apple,pear,banana,orange,mandarin,tangerine,clementine,lemon,lime,grapefruit,kiwi,mango,pineapple,papaya,melon,watermelon,honeydew,cantaloupe,strawberry,raspberry,blackberry,blueberry,currant,gooseberry,cherry,plum,peach,nectarine,apricot,grape,fig,date,pomegranate,passion fruit,lychee,coconut,avocado,quince,cranberry,elderberry,dragon fruit,star fruit,persimmon,guava,kumquat,mulberry'}},
+  {de:{q:'Nenne eine Gemüsesorte!',w:'Karotte,Möhre,Kartoffel,Tomate,Gurke,Paprika,Zucchini,Aubergine,Kürbis,Zwiebel,Knoblauch,Lauch,Porree,Sellerie,Brokkoli,Blumenkohl,Rosenkohl,Weißkohl,Rotkohl,Grünkohl,Wirsing,Spinat,Salat,Kopfsalat,Eisbergsalat,Feldsalat,Rucola,Radieschen,Rettich,Rote Bete,Spargel,Erbse,Bohne,Linse,Kichererbse,Mais,Fenchel,Artischocke,Pastinake,Kohlrabi,Ingwer,Pilz,Champignon,Süßkartoffel,Chili,Peperoni,Okra,Mangold,Chicoree,Steckrübe,Schwarzwurzel,Topinambur,Rhabarber,Frühlingszwiebel,Schalotte,Chinakohl,Spitzkohl,Romanesco,Pak Choi,Zuckerschote,Edamame,Meerrettich,Kohl,Rübe'},
+   en:{q:'Name a vegetable!',w:'carrot,potato,tomato,cucumber,pepper,bell pepper,zucchini,courgette,eggplant,aubergine,pumpkin,squash,onion,garlic,leek,celery,broccoli,cauliflower,brussels sprout,cabbage,red cabbage,kale,spinach,lettuce,arugula,radish,beetroot,asparagus,pea,bean,green bean,lentil,chickpea,corn,sweetcorn,fennel,artichoke,parsnip,kohlrabi,ginger,mushroom,sweet potato,chili,okra,chard,turnip,shallot,spring onion'}},
+  {de:{q:'Nenne rotes Obst oder Gemüse!',w:'Erdbeere,Himbeere,Kirsche,Tomate,Paprika,Rote Paprika,Radieschen,Rote Bete,Rotkohl,Johannisbeere,Rote Johannisbeere,Cranberry,Granatapfel,Wassermelone,Apfel,Roter Apfel,Chili,Peperoni,Blutorange,Preiselbeere,Hagebutte,Rhabarber,Rote Zwiebel,Cherrytomate,Rispentomate,Drachenfrucht,Litschi,Rambutan,Radicchio,Kidneybohne,Rote Linse,Himbeeren'},
+   en:{q:'Name a red fruit or vegetable!',w:'strawberry,raspberry,cherry,tomato,red pepper,pepper,radish,beetroot,red cabbage,redcurrant,cranberry,pomegranate,watermelon,apple,red apple,chili,blood orange,rhubarb,red onion,cherry tomato,dragon fruit,lychee,kidney bean'}},
+  {de:{q:'Nenne eine Beere!',w:'Erdbeere,Himbeere,Brombeere,Heidelbeere,Blaubeere,Johannisbeere,Stachelbeere,Cranberry,Preiselbeere,Holunderbeere,Holunder,Aroniabeere,Aronia,Gojibeere,Goji,Maulbeere,Moltebeere,Sanddorn,Vogelbeere,Wacholderbeere,Acaibeere,Acai,Jostabeere,Physalis,Weintraube,Traube,Schwarze Johannisbeere,Rote Johannisbeere,Walderdbeere'},
+   en:{q:'Name a berry!',w:'strawberry,raspberry,blackberry,blueberry,currant,redcurrant,blackcurrant,gooseberry,cranberry,elderberry,goji berry,mulberry,cloudberry,lingonberry,acai,boysenberry,huckleberry,grape'}}
+ ],
+ land:[
+  {de:{q:'Nenne ein Land in Europa!',w:'Deutschland,Österreich,Schweiz,Frankreich,Italien,Spanien,Portugal,Niederlande,Holland,Belgien,Luxemburg,Dänemark,Schweden,Norwegen,Finnland,Island,Irland,England,Schottland,Wales,Nordirland,Großbritannien,Polen,Tschechien,Slowakei,Ungarn,Rumänien,Bulgarien,Griechenland,Türkei,Kroatien,Serbien,Slowenien,Bosnien,Albanien,Montenegro,Nordmazedonien,Kosovo,Ukraine,Russland,Weißrussland,Belarus,Litauen,Lettland,Estland,Moldawien,Malta,Zypern,Andorra,Monaco,Liechtenstein,Vatikan,San Marino'}},
+  {de:{q:'Nenne ein Land in Afrika!',w:'Ägypten,Marokko,Algerien,Tunesien,Libyen,Nigeria,Ghana,Kenia,Äthiopien,Somalia,Südafrika,Namibia,Botswana,Simbabwe,Sambia,Tansania,Uganda,Ruanda,Kongo,Kamerun,Senegal,Mali,Madagaskar,Sudan,Südsudan,Elfenbeinküste,Mauritius,Seychellen,Angola,Mosambik,Niger,Tschad,Eritrea,Dschibuti,Gambia,Guinea,Liberia,Sierra Leone,Burkina Faso,Benin,Togo,Gabun,Malawi,Lesotho,Eswatini,Swasiland,Kap Verde,Komoren,Mauretanien,Burundi,Äquatorialguinea,Zentralafrikanische Republik'}},
+  {de:{q:'Nenne ein Land in Asien!',w:'China,Japan,Indien,Pakistan,Bangladesch,Indonesien,Thailand,Vietnam,Kambodscha,Laos,Myanmar,Malaysia,Singapur,Philippinen,Südkorea,Nordkorea,Korea,Mongolei,Nepal,Bhutan,Afghanistan,Iran,Irak,Syrien,Libanon,Israel,Jordanien,Saudi-Arabien,Jemen,Oman,Katar,Kuwait,Kasachstan,Usbekistan,Georgien,Armenien,Aserbaidschan,Sri Lanka,Taiwan,Turkmenistan,Kirgisistan,Tadschikistan,Malediven,Brunei,Osttimor,Bahrain,Vereinigte Arabische Emirate,Emirate,Türkei,Russland'}},
+  {de:{q:'Nenne ein Land in Amerika!',w:'USA,Amerika,Vereinigte Staaten,Kanada,Mexiko,Brasilien,Argentinien,Chile,Peru,Kolumbien,Venezuela,Ecuador,Bolivien,Paraguay,Uruguay,Kuba,Jamaika,Panama,Costa Rica,Guatemala,Honduras,Nicaragua,El Salvador,Belize,Haiti,Dominikanische Republik,Bahamas,Barbados,Trinidad und Tobago,Guyana,Suriname,Puerto Rico,Grenada,Dominica,St. Lucia'}}
+ ],
+ stadt:[
+  {de:{q:'Nenne eine Stadt in Deutschland!',w:'Berlin,Hamburg,München,Köln,Frankfurt,Stuttgart,Düsseldorf,Dortmund,Essen,Leipzig,Bremen,Dresden,Hannover,Nürnberg,Duisburg,Bochum,Wuppertal,Bielefeld,Bonn,Münster,Mannheim,Karlsruhe,Augsburg,Wiesbaden,Mönchengladbach,Gladbach,Gelsenkirchen,Aachen,Kiel,Rostock,Mainz,Freiburg,Erfurt,Magdeburg,Lübeck,Oberhausen,Krefeld,Kassel,Halle,Potsdam,Saarbrücken,Hamm,Neuss,Oldenburg,Osnabrück,Heidelberg,Darmstadt,Regensburg,Würzburg,Ulm,Jena,Trier,Koblenz,Jüchen,Grevenbroich,Willich,Viersen,Leverkusen,Solingen,Remscheid,Hagen,Paderborn,Göttingen,Wolfsburg,Braunschweig,Ingolstadt,Konstanz,Flensburg,Schwerin,Cottbus,Chemnitz,Zwickau,Recklinghausen,Bottrop,Herne,Mülheim,Ludwigshafen,Kaiserslautern,Pforzheim,Heilbronn,Reutlingen,Tübingen,Erlangen,Fürth,Bamberg,Bayreuth,Passau,Rosenheim,Kaarst,Meerbusch,Dormagen,Erkelenz,Siegen,Gütersloh,Moers,Bergisch Gladbach,Wolfsburg,Salzgitter,Hildesheim,Celle,Lüneburg,Stralsund,Greifswald,Wismar,Weimar,Gotha,Eisenach,Dessau,Wittenberg,Görlitz,Bautzen,Zwickau,Plauen,Landshut,Kempten,Garmisch-Partenkirchen,Lindau,Friedrichshafen,Baden-Baden,Offenburg,Esslingen,Ludwigsburg,Sindelfingen,Böblingen,Gießen,Marburg,Fulda,Hanau,Offenbach,Worms,Speyer,Landau,Bremerhaven,Cuxhaven,Wilhelmshaven,Emden,Sylt'}},
+  {de:{q:'Nenne eine Hauptstadt!',w:'Berlin,Wien,Bern,Paris,London,Madrid,Lissabon,Rom,Amsterdam,Brüssel,Luxemburg,Kopenhagen,Oslo,Stockholm,Helsinki,Reykjavik,Dublin,Warschau,Prag,Bratislava,Budapest,Bukarest,Sofia,Athen,Ankara,Moskau,Kiew,Minsk,Vilnius,Riga,Tallinn,Belgrad,Zagreb,Ljubljana,Sarajevo,Tirana,Skopje,Podgorica,Valletta,Nikosia,Monaco,Vaduz,Washington,Ottawa,Mexiko-Stadt,Brasilia,Buenos Aires,Santiago,Lima,Bogota,Caracas,Quito,La Paz,Montevideo,Havanna,Kairo,Rabat,Algier,Tunis,Tripolis,Abuja,Accra,Nairobi,Addis Abeba,Pretoria,Windhuk,Dakar,Peking,Tokio,Tokyo,Seoul,Pjöngjang,Neu-Delhi,Islamabad,Dhaka,Bangkok,Hanoi,Manila,Jakarta,Kuala Lumpur,Singapur,Kathmandu,Kabul,Teheran,Bagdad,Damaskus,Beirut,Jerusalem,Amman,Riad,Doha,Abu Dhabi,Maskat,Astana,Taschkent,Tiflis,Eriwan,Baku,Canberra,Wellington,Ulan Bator,Taipeh'}},
+  {de:{q:'Nenne eine Stadt in NRW!',w:'Köln,Düsseldorf,Dortmund,Essen,Duisburg,Bochum,Wuppertal,Bielefeld,Bonn,Münster,Mönchengladbach,Gladbach,Gelsenkirchen,Aachen,Krefeld,Oberhausen,Hagen,Hamm,Mülheim,Leverkusen,Solingen,Herne,Neuss,Paderborn,Bottrop,Recklinghausen,Remscheid,Bergisch Gladbach,Moers,Siegen,Gütersloh,Witten,Iserlohn,Düren,Ratingen,Lünen,Marl,Velbert,Minden,Viersen,Rheine,Dorsten,Gladbeck,Troisdorf,Detmold,Castrop-Rauxel,Arnsberg,Lüdenscheid,Bocholt,Dinslaken,Lippstadt,Herford,Kerpen,Grevenbroich,Jüchen,Willich,Kaarst,Meerbusch,Dormagen,Erkelenz,Korschenbroich,Wegberg,Heinsberg,Kempen,Tönisvorst,Nettetal,Brüggen,Schwalmtal,Hückelhoven,Bergheim,Pulheim,Frechen,Hürth,Brühl,Euskirchen,Wesel,Kleve,Emmerich,Goch,Xanten,Unna,Soest,Bergkamen,Datteln,Haltern,Ahlen,Warendorf,Coesfeld,Borken,Ibbenbüren,Lemgo,Bad Oeynhausen,Hilden,Langenfeld,Monheim,Erftstadt,Wesseling,Sankt Augustin,Siegburg,Königswinter,Bad Honnef,Mettmann,Erkrath,Haan,Wermelskirchen,Gummersbach,Olpe,Altena,Menden,Hemer,Schwerte,Kamen,Hattingen,Gevelsberg,Ennepetal,Schwelm,Rommerskirchen,Bedburg,Elsdorf,Titz,Linnich,Jülich,Geilenkirchen,Übach-Palenberg,Alsdorf,Eschweiler,Stolberg,Würselen,Herzogenrath'}}
+ ],
+ beruf:[
+  {de:{q:'Nenne einen Handwerksberuf!',w:'Bäcker,Metzger,Fleischer,Konditor,Friseur,Elektriker,Klempner,Installateur,Schreiner,Tischler,Maurer,Dachdecker,Maler,Lackierer,Mechaniker,Mechatroniker,Kfz-Mechatroniker,Kfz-Mechaniker,Zimmermann,Zimmerer,Glaser,Schlosser,Schweißer,Metallbauer,Fliesenleger,Bodenleger,Parkettleger,Gerüstbauer,Steinmetz,Straßenbauer,Schornsteinfeger,Kaminkehrer,Goldschmied,Uhrmacher,Schneider,Schuster,Schuhmacher,Polsterer,Raumausstatter,Tapezierer,Optiker,Augenoptiker,Hörgeräteakustiker,Zahntechniker,Orthopädietechniker,Hufschmied,Schmied,Gärtner,Landschaftsgärtner,Florist,Brauer,Müller,Winzer,Karosseriebauer,Fahrradmechaniker,Zweiradmechaniker,Anlagenmechaniker,Heizungsinstallateur,Elektroniker,Handwerker,Bauarbeiter,Fensterbauer,Kosmetiker,Tätowierer,Glasbläser,Töpfer,Keramiker,Buchbinder,Drucker,Instrumentenbauer,Geigenbauer,Orgelbauer,Bootsbauer,Sattler,Hutmacher,Korbmacher,Stuckateur,Estrichleger,Trockenbauer,Betonbauer,Werkzeugmechaniker,Industriemechaniker,Feinwerkmechaniker'}},
+  {de:{q:'Nenne einen Beruf im Krankenhaus oder beim Arzt!',w:'Arzt,Chirurg,Notarzt,Oberarzt,Chefarzt,Assistenzarzt,Kinderarzt,Augenarzt,Hausarzt,Zahnarzt,Frauenarzt,Hautarzt,Orthopäde,Kardiologe,Neurologe,Radiologe,Anästhesist,Internist,Urologe,Psychiater,Psychologe,Psychotherapeut,Krankenpfleger,Krankenschwester,Pfleger,Pflegekraft,Hebamme,Sanitäter,Rettungssanitäter,Notfallsanitäter,Arzthelfer,Zahnarzthelfer,Laborant,Physiotherapeut,Ergotherapeut,Logopäde,Masseur,Apotheker,Pharmazeut,Röntgenassistent,Sozialarbeiter,Seelsorger,Pförtner,Reinigungskraft,Koch,Hausmeister,Altenpfleger,Kinderkrankenpfleger,OP-Schwester,Medizintechniker,Heilpraktiker'}},
+  {de:{q:'Nenne einen Beruf, bei dem man ein Fahrzeug fährt!',w:'Pilot,Lokführer,Zugführer,Busfahrer,Taxifahrer,Fahrer,Lkw-Fahrer,Berufskraftfahrer,Fernfahrer,Trucker,Kapitän,Matrose,Schiffsführer,Fahrlehrer,Rennfahrer,Paketbote,Paketzusteller,Lieferfahrer,Kurier,Postbote,Briefträger,Pizzalieferant,Kranführer,Kranfahrer,Baggerfahrer,Gabelstaplerfahrer,Müllmann,Müllfahrer,Feuerwehrmann,Feuerwehrfrau,Polizist,Rettungssanitäter,Notfallsanitäter,Sanitäter,Landwirt,Bauer,Traktorfahrer,Chauffeur,Straßenbahnfahrer,Fahrradkurier,Astronaut,Testfahrer,Stuntman,Jockey'}},
+  {de:{q:'Nenne einen Beruf mit Tieren!',w:'Tierarzt,Tierpfleger,Zoowärter,Tierarzthelfer,Hundetrainer,Pferdewirt,Hufschmied,Landwirt,Bauer,Schäfer,Hirte,Imker,Fischer,Jäger,Förster,Melker,Reitlehrer,Jockey,Zoologe,Biologe,Hundefriseur,Tiertrainer,Dompteur,Tierfotograf,Tierheimleiter,Tierschützer,Tierpsychologe,Meeresbiologe,Tierpräparator,Falkner,Züchter,Hundezüchter,Pferdezüchter,Viehzüchter,Tierheilpraktiker,Tiersitter,Hundesitter,Veterinär'}}
+ ],
+ koerper:[
+  {de:{q:'Nenne einen Körperteil am Kopf!',w:'Kopf,Haar,Stirn,Auge,Augenbraue,Wimper,Augenlid,Pupille,Iris,Nase,Nasenloch,Nasenspitze,Nasenflügel,Mund,Lippe,Oberlippe,Unterlippe,Mundwinkel,Zunge,Zahn,Zähne,Backenzahn,Schneidezahn,Eckzahn,Weisheitszahn,Zahnfleisch,Gaumen,Mandel,Ohr,Ohrläppchen,Ohrmuschel,Trommelfell,Wange,Backe,Kinn,Kiefer,Schläfe,Schädel,Gehirn,Hirn,Gesicht,Hinterkopf,Scheitel,Bart'}},
+  {de:{q:'Nenne ein Organ!',w:'Herz,Lunge,Leber,Niere,Magen,Darm,Dünndarm,Dickdarm,Gehirn,Hirn,Haut,Milz,Galle,Gallenblase,Blase,Harnblase,Bauchspeicheldrüse,Schilddrüse,Blinddarm,Speiseröhre,Luftröhre,Kehlkopf,Zwerchfell,Gebärmutter,Eierstock,Hoden,Prostata,Rückenmark,Auge,Zunge,Nebenniere,Lymphknoten,Thymus,Mandel'}},
+  {de:{q:'Nenne einen Körperteil an Arm oder Bein!',w:'Arm,Oberarm,Unterarm,Ellenbogen,Handgelenk,Hand,Handfläche,Handrücken,Handballen,Finger,Daumen,Zeigefinger,Mittelfinger,Ringfinger,Kleiner Finger,Fingernagel,Fingerkuppe,Fingerspitze,Knöchel,Bizeps,Trizeps,Bein,Oberschenkel,Unterschenkel,Knie,Kniescheibe,Kniekehle,Wade,Schienbein,Fuß,Füße,Ferse,Zeh,Zehe,Zehennagel,Fußsohle,Fußrücken,Fußgelenk,Fußballen,Spann,Großzehe,Achillessehne,Meniskus,Kreuzband,Oberschenkelknochen,Schulter'}}
+ ],
+ kleidung:[
+  {de:{q:'Nenne etwas, das man im Winter trägt!',w:'Mütze,Wollmütze,Beanie,Schal,Handschuh,Fäustling,Wintermantel,Mantel,Winterjacke,Daunenjacke,Steppjacke,Parka,Anorak,Pullover,Pulli,Strickjacke,Rollkragenpullover,Rollkragen,Kapuzenpulli,Hoodie,Fleecejacke,Skijacke,Skihose,Schneeanzug,Stiefel,Winterstiefel,Schneestiefel,Ohrenschützer,Stirnband,Thermounterwäsche,Thermohose,Strumpfhose,Wollsocken,Socken,Sturmhaube,Balaclava,Pulswärmer,Beinstulpen,Stulpen,Halstuch,Lodenmantel,Pelzmantel,Poncho,Cardigan,Sweatshirt,Weste,Daunenweste'}},
+  {de:{q:'Nenne etwas, das man an den Füßen trägt!',w:'Schuh,Turnschuh,Sneaker,Sportschuh,Laufschuh,Hallenschuh,Fußballschuh,Stollenschuh,Wanderschuh,Stiefel,Stiefeletten,Gummistiefel,Winterstiefel,Skischuh,Sandale,Badelatschen,Latschen,Flipflop,Flip-Flops,Hausschuh,Pantoffel,Puschen,Socke,Strumpf,Kniestrumpf,Strumpfhose,Pumps,High Heels,Ballerina,Mokassin,Clogs,Crocs,Plateauschuhe,Slipper,Loafer,Halbschuh,Lederschuh,Chucks,Espadrilles,Inlineskates,Schlittschuhe,Rollschuhe,Flossen,Taucherflossen,Füßlinge,Sneakersocken'}},
+  {de:{q:'Nenne etwas, das man am Kopf trägt!',w:'Mütze,Hut,Cap,Kappe,Basecap,Beanie,Wollmütze,Bucket Hat,Schiebermütze,Baskenmütze,Sonnenhut,Strohhut,Zylinder,Cowboyhut,Kopftuch,Stirnband,Haarband,Haarreif,Helm,Fahrradhelm,Skihelm,Motorradhelm,Sturmhaube,Balaclava,Ohrenschützer,Kapuze,Turban,Krone,Diadem,Brille,Sonnenbrille,Taucherbrille,Skibrille,Kopfhörer,Bandana,Perücke,Schleier,Haube,Badekappe,Schlafmaske,Tiara,Barett,Kochmütze,Schutzhelm,Bauarbeiterhelm'}}
+ ],
+ kueche:[
+  {de:{q:'Nenne ein Küchengerät mit Strom!',w:'Herd,Ofen,Backofen,Mikrowelle,Kühlschrank,Gefrierschrank,Gefriertruhe,Spülmaschine,Geschirrspüler,Toaster,Wasserkocher,Kaffeemaschine,Kapselmaschine,Vollautomat,Espressomaschine,Mixer,Standmixer,Handmixer,Pürierstab,Küchenmaschine,Fritteuse,Heißluftfritteuse,Airfryer,Eismaschine,Entsafter,Waffeleisen,Sandwichmaker,Kontaktgrill,Raclettegrill,Raclette,Milchaufschäumer,Dampfgarer,Slow Cooker,Reiskocher,Brotbackautomat,Thermomix,Dunstabzugshaube,Induktionsherd,Ceranfeld,Elektrogrill,Eierkocher,Joghurtbereiter,Zitruspresse,Kaffeemühle,Allesschneider,Brotschneidemaschine,Vakuumierer,Küchenwaage,Popcornmaschine,Dörrautomat,Multikocher'}},
+  {de:{q:'Nenne Besteck oder Geschirr!',w:'Löffel,Gabel,Messer,Teelöffel,Esslöffel,Kuchengabel,Suppenlöffel,Besteck,Teller,Suppenteller,Kuchenteller,Tasse,Kaffeetasse,Becher,Glas,Weinglas,Schüssel,Salatschüssel,Müslischale,Schale,Untertasse,Kanne,Teekanne,Kaffeekanne,Krug,Eierbecher,Tablett,Platte,Servierplatte,Sauciere,Zuckerdose,Milchkännchen,Brotkorb,Stäbchen,Essstäbchen,Steakmesser,Buttermesser,Fischmesser,Dessertlöffel,Strohhalm,Trinkhalm,Karaffe,Sektglas,Bierglas,Schnapsglas,Tortenplatte'}}
+ ],
+ instrument:[
+  {de:{q:'Nenne ein Instrument mit Saiten!',w:'Gitarre,E-Gitarre,Akustikgitarre,Konzertgitarre,Westerngitarre,Bass,E-Bass,Bassgitarre,Geige,Violine,Bratsche,Viola,Cello,Kontrabass,Harfe,Ukulele,Banjo,Mandoline,Zither,Sitar,Laute,Lyra,Balalaika,Bouzouki,Oud,Charango,Kantele,Hackbrett,Klavier,Flügel,Piano,Cembalo,Spinett,Clavichord,Drehleier,Nyckelharpa,Erhu,Koto,Shamisen'}},
+  {de:{q:'Nenne ein Blasinstrument!',w:'Flöte,Querflöte,Blockflöte,Panflöte,Piccoloflöte,Altflöte,Klarinette,Bassklarinette,Oboe,Englischhorn,Fagott,Kontrafagott,Saxophon,Saxofon,Altsaxophon,Tenorsaxophon,Sopransaxophon,Baritonsaxophon,Trompete,Posaune,Tuba,Horn,Waldhorn,Flügelhorn,Kornett,Euphonium,Tenorhorn,Baritonhorn,Sousaphon,Alphorn,Jagdhorn,Fanfare,Signalhorn,Mundharmonika,Melodica,Dudelsack,Didgeridoo,Okarina,Orgel,Kirchenorgel,Mundorgel,Kazoo,Trillerpfeife,Pfeife'}},
+  {de:{q:'Nenne ein Schlaginstrument!',w:'Schlagzeug,Trommel,Pauke,Kesselpauke,Xylophon,Glockenspiel,Triangel,Tamburin,Schellenkranz,Bongo,Conga,Cajon,Djembe,Becken,Gong,Marimba,Vibraphon,Snare,Snaredrum,Bassdrum,Hi-Hat,Tom,Tomtom,Timbales,Kastagnetten,Maracas,Rassel,Shaker,Cowbell,Steeldrum,Handtrommel,Röhrenglocken,Klangschale,Glocke,Kalimba,Drumpad,Drumcomputer,Klanghölzer,Holzblock,Rahmentrommel,Tabla,Taiko'}}
+ ]
+};
+// 60 % der Runden kommt eine genauere Frage (wenn es für die Sprache eine gibt)
+function varyCat(c){
+  const vs=((c&&c.id&&VAR[c.id])||[]).filter(v=>v[G.lang]);
+  if(!vs.length||Math.random()<0.4) return c;
+  const v=vs[Math.floor(Math.random()*vs.length)][G.lang];
+  const vc=makeCat(v.q,c.i,v.w.split(','),false); vc.id=c.id; vc.variant=true; return vc;
+}
+
+const NET={mode:'solo',host:false,client:false,peer:null,clients:[],code:'',max:4,bots:1,myId:'host',conn:null,iv:0,gid:0,started:false,lob:null,sent:false,raf:0,tEnd:0,lastRound:-1};
+try{ const o=JSON.parse(localStorage.getItem('lavaNet')||'{}'); if(o.max) NET.max=o.max; if(o.bots!=null) NET.bots=o.bots; }catch(e){}
+const PCOL=[['😎','#ff7043'],['🐲','#26c6da'],['🦄','#ab47bc'],['🐼','#9ccc65'],['🦁','#ffca28'],['🐙','#ec407a'],['🐺','#78909c'],['🐵','#8d6e63']];
+const PREFIX='lavarise-v1-';
+const ME=()=>G?G.players.find(p=>p.me):null;
+const myName=()=>($('nameIn').value.trim()||'Spieler').slice(0,12);
+function netMsg(t,c){ const el=$('netMsg'); el.style.color=c||'var(--muted)'; el.textContent=t; }
+function setMode(m){ NET.mode=m; [...$('modeSeg').children].forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  $('onlineBox').classList.toggle('hidden',m!=='online'); $('botSeg').parentElement.classList.toggle('hidden',m==='online'); $('startBtn').parentElement.classList.toggle('hidden',m==='online'); }
+[...$('modeSeg').children].forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+function nseg(el,opts,key){ el.innerHTML=''; opts.forEach(v=>{ const b=document.createElement('button'); b.type='button'; b.textContent=v; b.className=NET[key]===v?'on':'';
+  b.onclick=()=>{ NET[key]=v; nseg(el,opts,key); try{localStorage.setItem('lavaNet',JSON.stringify({max:NET.max,bots:NET.bots}))}catch(e){} }; el.appendChild(b); }); }
+nseg($('maxSeg'),[2,3,4,5,6,8],'max'); nseg($('obotSeg'),[0,1,2,3,4,5],'bots');
+function noPeer(){ if(typeof Peer==='undefined'){ netMsg('❌ Online-Modus lädt nicht – Internet prüfen und Seite neu laden','var(--bad)'); return true; } return false; }
+function rndCode(){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c=''; for(let i=0;i<5;i++) c+=A[Math.floor(Math.random()*A.length)]; return c; }
+function send(c,m){ try{ if(c&&c.open) c.send(m); }catch(e){} }
+function bcast(m){ NET.clients.forEach(cl=>send(cl.conn,m)); }
+function netReset(){ clearInterval(NET.iv); cancelAnimationFrame(NET.raf); try{ NET.peer&&NET.peer.destroy(); }catch(e){}
+  Object.assign(NET,{host:false,client:false,peer:null,clients:[],conn:null,code:'',started:false,lob:null,sent:false}); }
+function buildLanes(){
+  $('lanes').innerHTML=''; $('markers').innerHTML='';
+  const n=G.players.length;
+  G.players.forEach((p,i)=>{
+    const lane=document.createElement('div'); lane.className='lane'+(p.me?' me':'');
+    lane.style.left=(i/n*100)+'%'; lane.style.width=(100/n)+'%';
+    lane.innerHTML=`<div class="pillar" style="background-color:${p.color}"></div><div class="avatar"><div class="face" style="background:${p.color}">${esc(p.emoji)}</div><div class="name">${p.me?'⭐ ':''}${esc(p.name)}</div></div>`;
+    $('lanes').appendChild(lane); p.el=lane; p.pillar=lane.querySelector('.pillar'); p.av=lane.querySelector('.avatar');
+  });
+  const lava=$('lava'); lava.querySelectorAll('.blob').forEach(b=>b.remove());
+  for(let i=0;i<14;i++){ const b=document.createElement('div'); b.className='blob'; b.style.left=(Math.random()*100)+'%';
+    b.style.animationDelay=(Math.random()*2.2)+'s'; const s=6+Math.random()*10; b.style.width=b.style.height=s+'px'; lava.appendChild(b); }
+}
+
+// ----- Lobby -----
+function renderLobby(L){
+  if(!L) return;
+  $('lobCode').textContent=L.code;
+  const humans=L.players.length;
+  $('lobInfo').textContent=`👥 ${humans}/${L.max} Spieler · 🤖 ${L.bots} Bot${L.bots===1?'':'s'}`;
+  $('lobList').innerHTML=L.players.map((n,i)=>`<div><span class="pos">${PCOL[i%PCOL.length][0]}</span>${esc(n)}${i===0?' 👑':''}</div>`).join('')
+    +(L.bots?`<div><span class="pos">🤖</span>${L.bots} Bot${L.bots===1?'':'s'}</div>`:'');
+  const st=$('lobStart');
+  if(NET.host){ st.classList.remove('hidden'); const ok=humans+L.bots>=2; st.disabled=!ok; st.textContent=ok?'🔥 Spiel starten':'⏳ Warte auf Mitspieler…'; $('lobWait').textContent='Schick den Code oder Link an deine Freunde 👇'; }
+  else { st.classList.add('hidden'); $('lobWait').textContent='⏳ Warte, bis der Host das Spiel startet…'; }
+}
+function lobbyUpdate(){
+  if(!NET.host) return;
+  const L={t:'lobby',code:NET.code,players:[myName()].concat(NET.clients.map(c=>c.name)),bots:NET.bots,max:NET.max};
+  NET.lob=L; bcast(L); renderLobby(L);
+}
+function showLobby(){ ['startScreen','endScreen'].forEach(i=>$(i).classList.add('hidden')); $('lobby').classList.remove('hidden'); if(NET.host) lobbyUpdate(); else renderLobby(NET.lob); }
+function leaveLobby(msg){ netReset(); ['lobby','endScreen'].forEach(i=>$(i).classList.add('hidden')); $('startScreen').classList.remove('hidden'); setMode('online'); netMsg(msg||'');
+  try{ history.replaceState(null,'',location.pathname); }catch(e){} }
+
+// ----- Host -----
+function hostRoom(){
+  if(noPeer()) return;
+  const cName=$('customName').value.trim();
+  if(!S.cats.size && !cName){ netMsg('Wähl mindestens eine Kategorie aus!','var(--bad)'); return; }
+  if(cName && !customInfo()){ netMsg('Eigene Kategorie: bitte mind. 5 Wörter eintragen.','var(--bad)'); return; }
+  netReset(); netMsg('⏳ Raum wird erstellt…');
+  const code=rndCode(), peer=new Peer(PREFIX+code); NET.peer=peer;
+  peer.on('open',()=>{ NET.host=true; NET.code=code; NET.myId='host'; netMsg(''); showLobby(); });
+  peer.on('connection',c=>{ c.on('data',d=>hostMsg(c,d)); c.on('close',()=>hostLeave(c)); });
+  peer.on('error',e=>{ if(e.type==='unavailable-id'&&!NET.host){ hostRoom(); return; } if(!NET.host) netMsg('❌ Fehler: '+e.type,'var(--bad)'); });
+  peer.on('disconnected',()=>{ try{ if(NET.peer===peer) peer.reconnect(); }catch(e){} });
+}
+function hostMsg(c,d){
+  if(!d||typeof d!=='object') return;
+  if(d.t==='hello'){
+    if(NET.clients.some(x=>x.conn===c)) return;
+    if(NET.started){ send(c,{t:'deny',msg:'Das Spiel läuft schon – warte bis zur nächsten Runde.'}); setTimeout(()=>c.close(),800); return; }
+    if(NET.clients.length+1>=NET.max){ send(c,{t:'deny',msg:'Der Raum ist voll.'}); setTimeout(()=>c.close(),800); return; }
+    const id='p'+Math.random().toString(36).slice(2,8);
+    NET.clients.push({id,conn:c,name:String(d.name||'Spieler').slice(0,12)});
+    send(c,{t:'welcome',id,code:NET.code}); lobbyUpdate(); SFX.ok(); return;
+  }
+  const cl=NET.clients.find(x=>x.conn===c); if(!cl||!G||!G.online) return;
+  const p=G.players.find(x=>x.cid===cl.id); if(!p) return;
+  if(d.t==='ans') hostAnswer(p,String(d.val||'').trim().slice(0,40),c);
+  if(d.t==='hint') hostHint(p,c);
+}
+function hostLeave(c){
+  const i=NET.clients.findIndex(x=>x.conn===c); if(i<0) return;
+  const cl=NET.clients.splice(i,1)[0];
+  if(G&&G.online&&!G.over){ const p=G.players.find(x=>x.cid===cl.id); if(p&&p.alive){ p.alive=false; p.answered=true; p.deathRound=G.round; render(); flash('🚪 '+esc(p.name)+' ist raus','#ff8a80'); } }
+  if(!NET.started) lobbyUpdate();
+}
+function checkWord(val){
+  if(!/^[\p{L}\s'.&-]+$/u.test(val)) return {msg:tr().letters};
+  let key;
+  if(G.party){ key=matchWord(G.cat,val,G.lang)||fold(val); if(key.length<3) return {msg:tr().short}; }
+  else { key=matchWord(G.cat,val,G.lang); if(!key) return {msg:G.cat.custom?tr().unknownC:tr().unknown}; }
+  if(G.used.has(key)) return {msg:tr().used};
+  return {ok:true,key};
+}
+function hostAnswer(p,val,c){
+  if(!p.alive||p.answered||G.over||G.phase!=='type'||!val) return;
+  const r=checkWord(val);
+  if(!r.ok){ send(c,{t:'res',ok:false,msg:r.msg}); return; }
+  const full=letters(val), n=p.hinted?Math.floor(full/2):full;
+  p.pending={word:val.charAt(0).toUpperCase()+val.slice(1),key:r.key,n,half:p.hinted};
+  p.answered=true; bubble(p,'✅','wait'); send(c,{t:'res',ok:true,n,msg:tr().sent(n)}); hostSnap();
+}
+function hostHint(p,c){
+  if(!p.alive||p.answered||G.phase!=='type'||p.hinted) return;
+  if(!p.hints){ send(c,{t:'res',ok:false,msg:tr().nohint}); return; }
+  const avail=G.cat.list.filter(w=>!G.used.has(fold(w))); if(!avail.length) return;
+  avail.sort((a,b)=>letters(a)-letters(b));
+  const mid=avail.slice(Math.floor(avail.length*0.3),Math.ceil(avail.length*0.8));
+  const w=(mid.length?mid:avail)[Math.floor(Math.random()*(mid.length||avail.length))];
+  p.hints--; p.hinted=true; send(c,{t:'hint',w,msg:tr().hint(w)}); hostSnap();
+}
+function hostSnap(){
+  // Falls der Host-Tab im Hintergrund ist (rAF pausiert), Runde trotzdem auflösen
+  if(G&&G.online&&NET.host&&!G.client&&G.phase==='type'&&(performance.now()-G.start>=G.limit*1000||G.players.every(p=>p.answered))){ reveal(); return; }
+  if(!G||!G.online||!NET.host||!NET.clients.length) return;
+  const left=G.phase==='type'?Math.max(0,G.limit-(performance.now()-G.start)/1000):0;
+  bcast({t:'snap',gid:G.gid,round:G.round,lava:G.lava,phase:G.phase,nextRise:G.nextRise,q:$('question').textContent,left,limit:G.limit,lang:G.lang,
+    players:G.players.map((p,i)=>({id:p.cid||('b'+i),n:p.name,e:p.emoji,c:p.color,h:p.h,a:p.alive,an:p.answered,b:p.bub||null,hi:p.hints,hd:p.hinted,bot:!p.human}))});
+}
+function hostEnd(){
+  hostSnap();
+  bcast({t:'end',round:G.round,rank:ranking().map(p=>({id:p.cid||'',name:p.name,emoji:p.alive?p.emoji:'💀',h:p.h}))});
+  NET.started=false; clearInterval(NET.iv);
+}
+
+// ----- Mitspieler (Client) -----
+function joinRoom(){
+  if(noPeer()) return;
+  const code=$('codeIn').value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(code.length<4){ netMsg('Bitte den Raum-Code eingeben','var(--bad)'); return; }
+  netReset(); netMsg('⏳ Verbinde mit Raum '+code+'…');
+  const peer=new Peer(); NET.peer=peer;
+  peer.on('open',()=>{
+    const c=peer.connect(PREFIX+code,{reliable:true}); NET.conn=c;
+    const to=setTimeout(()=>{ if(!NET.client&&NET.peer===peer) netMsg('❌ Keine Verbindung – Code prüfen oder nochmal versuchen','var(--bad)'); },10000);
+    c.on('open',()=>send(c,{t:'hello',name:myName()}));
+    c.on('data',d=>{ clearTimeout(to); clientMsg(d); });
+    c.on('close',()=>{ if(NET.client) clientLost(); });
+  });
+  peer.on('error',e=>{ if(NET.client) return; netMsg(e.type==='peer-unavailable'?'❌ Raum nicht gefunden – Code prüfen':'❌ Fehler: '+e.type,'var(--bad)'); });
+}
+function clientLost(){ cancelAnimationFrame(NET.raf); if(G){ G.phase='over'; G.over=true; } $('answer').disabled=true; leaveLobby('❌ Verbindung zum Raum verloren'); }
+function clientMsg(d){
+  if(!d||typeof d!=='object') return;
+  if(d.t==='deny'){ const m=d.msg; netReset(); netMsg('❌ '+m,'var(--bad)'); return; }
+  if(d.t==='welcome'){ NET.client=true; NET.myId=d.id; NET.code=d.code; try{ history.replaceState(null,'','?raum='+d.code); }catch(e){} netMsg(''); showLobby(); return; }
+  if(d.t==='lobby'){ NET.lob=d; renderLobby(d); return; }
+  if(d.t==='snap') return clientSnap(d);
+  if(d.t==='flash'){ flash(d.txt,d.color); if(/^\d$/.test(d.txt)) beep(520,.12,'square',.07); if(d.txt==='1') setTimeout(()=>SFX.go(),800); return; }
+  if(d.t==='res'){
+    const fb=$('feedback'), inp=$('answer');
+    if(d.ok){ SFX.ok(); NET.sent=true; fb.style.color='var(--ok)'; fb.textContent=d.msg; inp.disabled=true; }
+    else { SFX.bad(); fb.style.color='var(--bad)'; fb.textContent=d.msg; if(G&&G.phase==='type'&&!NET.sent){ inp.disabled=false; inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake'); inp.focus(); inp.select(); } }
+    updHint(); return;
+  }
+  if(d.t==='hint'){ SFX.hint(); const fb=$('feedback'); fb.style.color='var(--lava3)'; fb.textContent=d.msg; const inp=$('answer'); inp.value=d.w; inp.focus(); inp.select(); return; }
+  if(d.t==='end') return clientEnd(d);
+}
+function clientSnap(s){
+  if(!G||!G.client||G.gid!==s.gid||G.players.length!==s.players.length){
+    G={client:true,online:true,gid:s.gid,lang:s.lang,lava:s.lava,round:0,phase:'wait',used:new Set(),hints:3,over:false,
+      players:s.players.map(x=>({cid:x.id,name:x.n,emoji:x.e,color:x.c,human:!x.bot,me:x.id===NET.myId,h:0,alive:true}))};
+    ['startScreen','endScreen','lobby'].forEach(i=>$(i).classList.add('hidden'));
+    buildLanes(); layout(); NET.lastRound=-1; NET.sent=false;
+    $('answer').placeholder=T[s.lang].ph; $('answer').value=''; $('feedback').textContent=''; $('need').textContent=''; arena.classList.remove('danger');
+  }
+  const me=ME(), prevLava=G.lava; let died=false;
+  s.players.forEach((x,i)=>{ const p=G.players[i]; if(p.alive&&!x.a) died=true;
+    p.h=x.h; p.alive=x.a; p.answered=x.an; p.hints=x.hi; p.hinted=x.hd;
+    const k=x.b?x.b.h+'|'+x.b.c:''; if(k!==p.bk){ p.bk=k; if(x.b) bubble(p,x.b.h,x.b.c); else p.av.querySelector('.bubble')?.remove(); } });
+  if(s.lava>prevLava+0.01) SFX.lava(); if(died) SFX.die();
+  G.lava=s.lava; G.round=s.round; G.nextRise=s.nextRise; G.limit=s.limit;
+  if(s.q) $('question').textContent=s.q;
+  G.phase=s.phase;
+  const inp=$('answer');
+  if(s.phase==='type'&&s.round!==NET.lastRound){
+    NET.lastRound=s.round; NET.sent=false; inp.value=''; $('feedback').textContent='';
+    if(me&&me.alive){ inp.disabled=false; inp.focus(); } else inp.disabled=true;
+    NET.tEnd=performance.now()+s.left*1000; G.lastTick=99; cancelAnimationFrame(NET.raf); clientTick();
+  }
+  if(s.phase!=='type'||!me||!me.alive) inp.disabled=true;
+  render(); updHint(); updNeed();
+}
+function clientTick(){
+  if(!G||!G.client||G.phase!=='type'){ $('timer').style.width='0%'; return; }
+  const left=(NET.tEnd-performance.now())/1000; $('timer').style.width=Math.max(0,left/G.limit*100)+'%';
+  const me=ME(), sec=Math.ceil(left);
+  if(sec<=3&&sec>0&&sec<G.lastTick&&me&&me.alive&&!NET.sent){ G.lastTick=sec; SFX.tick(); }
+  NET.raf=requestAnimationFrame(clientTick);
+}
+function clientEnd(d){
+  cancelAnimationFrame(NET.raf); if(G){ G.phase='over'; G.over=true; }
+  $('answer').disabled=true; $('need').textContent=''; arena.classList.remove('danger'); $('question').textContent=T[(G&&G.lang)||'de'].end;
+  const r=d.rank||[], win=r[0]&&r[0].id===NET.myId, pos=r.findIndex(x=>x.id===NET.myId)+1;
+  $('endTitle').textContent=win?'🏆 Du hast gewonnen!':'🔥 Spiel vorbei!';
+  $('newRec').textContent='';
+  $('endText').textContent=win?`Als Letzter übrig nach ${d.round} Runden – stark!`:(r[0]?`${r[0].emoji} ${r[0].name} gewinnt nach ${d.round} Runden. Du bist Platz ${pos}.`:'');
+  $('rankList').innerHTML=r.map((p,i)=>`<div class="${p.id===NET.myId?'me':''}"><span class="pos">${i+1}</span>${esc(p.emoji)} ${esc(p.name)}<span class="h">${p.h} m</span></div>`).join('');
+  $('endHs').innerHTML=hsHTML(loadHS().slice(0,5),-1);
+  $('watchBtn').classList.add('hidden'); $('endScreen').classList.remove('hidden');
+  if(win) SFX.win();
+}
+
+// ----- Knöpfe -----
+$('hostBtn').onclick=hostRoom;
+$('joinBtn').onclick=joinRoom;
+$('codeIn').addEventListener('keydown',e=>{ if(e.key==='Enter') joinRoom(); });
+$('lobStart').onclick=()=>{ if(!NET.host||NET.started) return; NET.gid++; NET.started=true; newGame(); if(!G||G.gid!==NET.gid){ NET.started=false; showLobby(); } };
+$('lobLeave').onclick=()=>leaveLobby('');
+$('copyBtn').onclick=async()=>{
+  const url=location.origin+location.pathname+'?raum='+NET.code, b=$('copyBtn');
+  try{ if(navigator.share){ await navigator.share({title:'Lava-Rise',text:'Spiel mit mir Lava-Rise! 🌋 Raum-Code: '+NET.code,url}); return; } }catch(e){ if(e&&e.name==='AbortError') return; }
+  try{ await navigator.clipboard.writeText(url); b.textContent='✅ Kopiert!'; }catch(e){ $('lobWait').textContent=url; }
+  setTimeout(()=>b.textContent='📤 Link teilen',1600);
+};
+try{ const q=new URLSearchParams(location.search).get('raum'); if(q){ setMode('online'); $('codeIn').value=q.toUpperCase().slice(0,6); netMsg('👋 Name eintragen und auf „Beitreten“ tippen'); } }catch(e){}
+
 $('startBtn').onclick=newGame;
 </script>
 </body>
