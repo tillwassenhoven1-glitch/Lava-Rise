@@ -7,6 +7,16 @@ Ein schnelles Wortspiel im Browser – ähnlich wie *Type or Die*.
 
 Keine Installation, kein Konto nötig – läuft auf Handy, iPad und PC. 🎮
 
+## 🌐 Online-Modus (neu in v0.2)
+- 🏠 Einer erstellt einen **Raum** und bekommt einen Code (z. B. `K7P2Q`)
+- 📤 Code oder Link an Freunde schicken – die tippen auf **Beitreten**
+- 👥 Einstellbar: wie viele Spieler mitmachen dürfen (2–8) und wie viele Bots dabei sind (0–5)
+- 🔥 Alle bekommen dieselbe Frage, die Lava steigt für alle gleich
+
+## 🆕 Außerdem neu
+- ❓ Abwechslungsreichere Fragen, z. B. „Nenne eine Ballsportart“, „Nenne eine Sportart, die man zu zweit spielt“, „Nenne ein Tier, das fliegen kann“ oder „Nenne eine Stadt in NRW“
+- ✅ Bessere Worterkennung: zusammengesetzte Wörter wie **Bauarbeiter**, **Gemüsehändler** oder **Riesenschildkröte** zählen jetzt, dazu viele neue Wörter
+
 ## So funktioniert's
 - ❓ Eine Frage erscheint, z. B. **„Nenne ein Tier!“**
 - ⌨️ Tippe so schnell wie möglich eine passende Antwort
